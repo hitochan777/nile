@@ -74,13 +74,13 @@ class TerminalNode(NLPTree):
     sys.stdout.write("%s" % (separator_end))
 
   def span_start(self):
-    while(self.children):
+    while(self.children): # why "while"? not "if"?
       return self.children[0].span_start()
     if(len(self.children) == 0):
       return self.eIndex
 
   def span_end(self):
-    while(self.children):
+    while(self.children): # why "while"? not "if"? 
       return self.children[-1].span_end()
     if(len(self.children) == 0):
       return self.eIndex

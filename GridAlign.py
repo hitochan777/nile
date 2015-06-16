@@ -34,7 +34,7 @@ from PartialGridAlignment import PartialGridAlignment
 from NLPTreeHelper import *
 import Fmeasure
 import svector
-import hminghkm
+import hminghkm # for rule extraction
 
 class Model(object):
   """
@@ -213,7 +213,7 @@ class Model(object):
     if self.COMPUTE_HOPE:
       self.hope = self.etree.partialAlignments_hope[0]
     if self.COMPUTE_FEAR:
-      self.fear = self.etree.partialAlignments_fear[0]
+        self.fear = self.etree.partialAlignments_fear[0]
 
   def bottom_up_visit(self):
     """
@@ -267,7 +267,7 @@ class Model(object):
   ################################################################################
   def nonterminal_operation_cube(self, currentNode):
       # To speed up each epoch of training (but not necessarily convergence),
-      # generate a single forest with model score as the objective
+      # generate a single forest with model score as thz objective
       # Search through that forest for the oracle hypotheses,
       # e.g. hope (or fear)
 
@@ -610,7 +610,7 @@ class Model(object):
     """
 
     if self.COMPUTE_ORACLE:
-      edge.fscore = self.ff_fscore(edge, srcSpan)
+      edge.fscore = self.ff_fscore(edge, srcSpan) # Is this bug, since if "COMPUTE_ORACLE" is true, fscore is not needed.
 
     boundingBox = None
     if self.DO_RESCORE:
@@ -926,7 +926,7 @@ class Model(object):
 
   ############################################################################
   # ff_fscore(self):
-  # Compute f-score of an edge wrt the entire gold alignment
+  # Compute f-score of an edge with respect to the entire gold alignment
   # It shouldn't matter if we compute f-score of an edge wrt the entire
   # alignment or wrt the same piece of the gold alignment. The fscore for the
   # former will just have a lower recall figure.

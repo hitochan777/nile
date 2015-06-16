@@ -59,7 +59,7 @@ class Tree(object):
       self.children[i:i] = [child]
     else:
       self.children[len(self.children):]=[child]
-    for j in range(i,len(self.children)): # if i == -1 then index out of range will occur?
+    for j in range(i,len(self.children)): # if i==-1, firstly the last element's order becomes -1, but eventually it will be overwritten to become len(self.children)-1
       self.children[j].order = j
 
   def frontier(self):

@@ -808,6 +808,7 @@ if __name__ == "__main__":
         weights_out = open("weights."+pid, "w")
     ###########################################################
     # Initialize blobs to pass to training and decoding methods
+    # A Binary Large OBject (BLOB) is a collection of binary data stored as a single entity in a database management system.
     ###########################################################
     common_blob = {
       'pef': pef,
