@@ -3,70 +3,54 @@ a hierarchical, syntax-based discriminative alignment package
 
 This document describes how to use and run Nile.
 
-============================================
-CONTENTS
-============================================
-I. REQUIREMENTS
-II. PREPARING YOUR DATA
-III. TRAINING
-IV. USER-DEFINED FEATURES
-V. ITERATIVE VITERBI TRAINING & INFERENCE
-VI. TESTING
-VII. OTHER OPTIONS
-VIII. QUESTIONS/COMMENTS
-IX. REFERENCES
+##CONTENTS
+1. REQUIREMENTS
+2. PREPARING YOUR DATA
+3. TRAINING
+4. USER-DEFINED FEATURES
+5. ITERATIVE VITERBI TRAINING & INFERENCE
+6. TESTING
+7. OTHER OPTIONS
+8. QUESTIONS/COMMENTS
+9. REFERENCES
 
-============================================
-I. REQUIREMENTS
-============================================
+###1. REQUIREMENTS
 Nile currently depends on a few packages for
 logging, ui, implementation, and parallelization:
-  A. python-gflags: a commandline flags module for python
+1. python-gflags: a commandline flags module for python
      (http://code.google.com/p/python-gflags/)
-
-  B. pyglog: a logging facility for python based on google-glog
+2. pyglog: a logging facility for python based on google-glog
      (http://www.isi.edu/~riesa/software/pyglog)
-
-  C. svector: a python module for sparse vectors, by David Chiang
+3. svector: a python module for sparse vectors, by David Chiang
      A version is included in this distribution under svector/
      You can download the latest version from:
      http://www.isi.edu/~chiang/software/svector.tgz
-
-  D. An MPI Implementation. We use MPICH2.
+4. An MPI Implementation. We use MPICH2.
      (http://www.mcs.anl.gov/research/projects/mpich2/)
      Download the latest stable release for your architecture.
      Then follow the Installer's Guide, available in the documentation
      section of the website.
      See Section II for more information.
-
-  E. Boost MPI Python bindings.
+5. Boost MPI Python bindings.
      (http://www.boost.org/users/download/)
      Installation instructions:
      http://www.boost.org/doc/libs/1_49_0/doc/html/mpi.html
 
-============================================
-II. PREPARING YOUR DATA
-============================================
+###2. PREPARING YOUR DATA
 
-A.  To train an alignment model you will need some data.
+1.  To train an alignment model you will need some data.
     We use some simple canonical filenames below in describing each, but
     you can call them anything you'd like.
 
     1. train.f: a file of source-language sentences, one per line.
     2. train.e: a file of target-language sentences, one per line.
-    3. train.a: a file of gold-standard alignments for each sentence pair
-                in train.f and train.e; each line in the file should be a
-                sequence of space-separated strings encoding a single link in
-                f-e format.
-                e.g.: 0-1 1-2 2-2 2-3 4-5
-    4. train.e-parse: a file of target-language parse trees, one for each line
-                in train.e; trees should be in standard Penn Treebank format, e.g.:
-                (TOP (S (NP (DT the) (NN man)) (VP (VBD ate))))
-                We use tokens -RRB- and -LRB- to represent right and left parentheses,
-                respectively (see below).
-    5. train.f-parse: a file of source-language parse-trees, one for each line
-                in train.f (OPTIONAL)
-
+    3. train.a: a file of gold-standard alignments for each sentence pair in train.f and train.e; each line in the file should be a sequence of space-separated strings encoding a single link in f-e format as follows:
+            0-1 1-2 2-2 2-3 4-5
+    4. train.e-parse: a file of target-language parse trees, one for each line in train.e; trees should be in standard Penn Treebank format as follows:
+            (TOP (S (NP (DT the) (NN man)) (VP (VBD ate))))
+        We use tokens `-RRB-` and `-LRB-` to represent right and left parentheses, respectively (see below).
+    5. train.f-parse: a file of source-language parse-trees, one for each line in train.f (OPTIONAL)
+    
     Also prepare heldout development and test data in the same manner.
     Source-tree files are optional, but all others are required.
 
@@ -78,7 +62,8 @@ A.  To train an alignment model you will need some data.
     test.f <-- source-language sentences in heldout test data
 
     ADDITIONAL NOTES:
-    (i) Why use a heldout development (dev) and test set?
+    1. Why use a heldout development (dev) and test set?
+    
         After every epoch of training Nile checks it's
         current performance on this dev set. When performance is no longer
         increasing on this dev set, we say that we've converged and we stop
@@ -90,32 +75,26 @@ A.  To train an alignment model you will need some data.
         Using the model we select based on development performance in
         Section III(E), we align our test.* data and note the accuracy.
 
-    (ii) We relabel parentheses tokens before parsing,
-         i.e. "(" -> -LRB- and ")" -> -RRB-. For example:
-         $ sed -e 's/(/-LRB-/g' -e 's/)/-RRB-/g' < input > input.clean
+    2. We relabel parentheses tokens before parsing, i.e. "(" -> -LRB- and ")" -> -RRB-. For example:
+           $ sed -e 's/(/-LRB-/g' -e 's/)/-RRB-/g' < input > input.clean
 
          And then we parse, by doing:
-         java -Xmx2600m -Xms2600m -jar berkeleyParser.jar \
-              -gr eng_grammar.gr \
-              -binarize \
-              -maxLength 1000 < input.clean > output
+             java -Xmx2600m -Xms2600m -jar berkeleyParser.jar \
+                 -gr eng_grammar.gr \
+                 -binarize \
+                 -maxLength 1000 < input.clean > output
 
          Because of the way cube pruning works, you will encounter far fewer
          search errors if you binarize your trees before training by using the
-         -binarize flag.
+         `-binarize` flag.
 
-    (ii) In case of sentences that failed to parse:
+    3. In case of sentences that failed to parse:
          Use a blank line, a 0 on a line by itself,
          or the Berkeley parser default failure string: (())
          to tell Nile to skip the affected sentence pair.
 
-C.  Tables from GIZA++ output (Brown et al., 1993; Och and Ney, 2003)
-    We run GIZA++ Model-4 on a large corpus, and compute p(e|f) and p(f|w)
-    word association tables from simply counting links in the final Viterbi
-    alignment.
-
-    If you don't have time to run Model-4, that's fine. We've seen benefits
-    from using counts from just HMM or Model-1 training.
+###3.  Tables from GIZA++ output (Brown et al., 1993; Och and Ney, 2003)
+We run GIZA++ Model-4 on a large corpus, and compute p(e|f) and p(f|w) word association tables from simply counting links in the final Viterbi alignment. If you don't have time to run Model-4, that's fine. We've seen benefits from using counts from just HMM or Model-1 training.
 
     p(e|f) file format:
     <e-word> <f-word> p(e|f)
@@ -123,21 +102,11 @@ C.  Tables from GIZA++ output (Brown et al., 1993; Och and Ney, 2003)
     p(f|e) file format:
     <f-word> <e-word> p(f|e)
 
-D.  Alignment files from GIZA++ (OPTIONAL)
-    You can pass up to two third-party alignment files to the trainer with flags
-    --a1 and --a2 in nile.py. For --a1 we use intersection of Model-4 alignments
-    from e->f and f->e directions. For --a2 we use grow-diag-final-and
-    symmetrizatized alignments.
+###4.  Alignment files from GIZA++ (OPTIONAL)
+You can pass up to two third-party alignment files to the trainer with flags --a1 and --a2 in nile.py. For --a1 we use intersection of Model-4 alignments from e->f and f->e directions. For --a2 we use grow-diag-final-and symmetrizatized alignments. These alignments will allow the trainer to fire indicator features for making the same predictions as your supplied alignments. Feel free to substitute any other type of alignments here as input. Using GIZA++ Model-4 intersection and grow-diag-final-and alignments here, we generally see a large F-score increase.
 
-    These alignments will allow the trainer to fire indicator features for making
-    the same predictions as your supplied alignments. Feel free to substitute any
-    other type of alignments here as input. Using GIZA++ Model-4 intersection and
-    grow-diag-final-and alignments here, we generally see a large F-score increase.
-
-E.  Vocabulary files. We'll need to give the trainer (and aligner) some
-    vocabulary files it will use to filter potentially large p(e|f) and p(f|e)
-    data files. Keeping these full data files in memory can be prohibitively
-    expensive.
+###5.  Vocabulary files. 
+We'll need to give the trainer (and aligner) some vocabulary files it will use to filter potentially large p(e|f) and p(f|e) data files. Keeping these full data files in memory can be prohibitively expensive.
 
     Concatenate your training and development e and f files and run
     prepare-vocab.py:
@@ -412,3 +381,4 @@ Jason Riesa and Daniel Marcu. Automatic Parallel Fragment Extraction from Noisy 
 
 Robert Tibshirani. Regression shrinkage and selection via the lasso. 1996.
 J. Royal. Statist. Soc B., Vol. 58, No. 1, pages 267-288.
+
