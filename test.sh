@@ -12,26 +12,27 @@
 # NUMCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
 ###################################################################
 
-K=128
+K=10
 DATE=`date +%m%d%y`
 
 BASEDIR=.
 DATA=$BASEDIR/data
-TEST=$DATA/test
-LANGPAIR=zh-en
+TEST=$DATA
+LANGPAIR=zh-ja
+PYTHON=python
 
-WEIGHTS=my-training-run.weights-22
+WEIGHTS=d061915.k10.n2..weights-2
 NAME=$WEIGHTS.test-output.a
 
-mpiexec -n $NUMCPUS $PYTHON nile.py \
-  --f $TEST/test.f \
-  --e $TEST/test.e \
-  --etrees $TEST/test.e-parse \
-  --ftrees $TEST/test.f-parse \
-  --evcb $TEST/test.e.vcb \
-  --fvcb $GOLD/test.f.vcb \
+mpiexec -n 2 $PYTHON nile.py \
+  --f $TEST/dev.f \
+  --e $TEST/dev.e \
+  --etrees $TEST/dev.e-parse \
+  --evcb $TEST/e.vcb \
+  --fvcb $TEST/f.vcb \
   --pef $DATA/GIZA++.m4.pef  \
   --pfe $DATA/GIZA++.m4.pfe \
+  --score_out score.log \
   --align \
   --langpair $LANGPAIR \
   --weights $WEIGHTS \

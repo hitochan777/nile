@@ -1,6 +1,5 @@
-04/05/2012
-
-Nile -- a hierarchical, syntax-based discriminative alignment package
+#Nile
+a hierarchical, syntax-based discriminative alignment package
 
 This document describes how to use and run Nile.
 

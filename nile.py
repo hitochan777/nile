@@ -199,7 +199,6 @@ def decode_parallel(weights, indices, blob, name="", out=sys.stdout, score_out=N
       # Dump intermediate chunk to disk. Reassemble later.
       if FLAGS.train:
         cPickle.dump((model.modelBest.links, model.gold.links_dict), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
-        print model.modelBest.score
       elif FLAGS.align:
         # cPickle.dump(model.modelBest.links, result_file, protocol=cPickle.HIGHEST_PROTOCOL)
         cPickle.dump((model.modelBest.links,model.modelBest.score), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
@@ -253,6 +252,8 @@ def decode_parallel(weights, indices, blob, name="", out=sys.stdout, score_out=N
       sys.stderr.write('# Gold Total: %d\n' % (numGoldLinks))
       sys.stderr.write("[%d] Finished decoding.\n" %(myRank))
     else:
+      if score_out!=None:
+        sout = open(score_out,"w")
       for i, instanceID in enumerate(indices):
         node = i % nProcs
         resultTuple = cPickle.load(resultFiles[node])
@@ -260,7 +261,7 @@ def decode_parallel(weights, indices, blob, name="", out=sys.stdout, score_out=N
         score = resultTuple[1]
         out.write("%s\n" %(" ".join(map(lambda link: "%s-%s" %(link[0], link[1]), modelBestLinks))))
         if(score_out!=None):
-            out.write("%s\n" % (score))
+            sout.write("%s\n" % (score))
     # CLEAN UP
     for i in range(nProcs):
       resultFiles[i].close()
@@ -852,4 +853,4 @@ if __name__ == "__main__":
       do_training(indices, training_blob, heldout_blob, weights, weights_out, debiasing_weights)
     elif FLAGS.align:
       decode_parallel(weights, indices, training_blob, "align",
-                      out=file_handles['out'],score_out=file_handles['score_out'])
+                      out=file_handles['out'],score_out=FLAGS.score_out)
