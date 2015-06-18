@@ -2,20 +2,20 @@
 #PBS -l walltime=00:30:00,nodes=10:ppn=4
 #PBS -N nile-test
 
-cd $PBS_O_WORKDIR  # Connect to working directory
+# cd $PBS_O_WORKDIR  # Connect to working directory
 ###################################################################
 # Initialize MPI
 ###################################################################
-export PATH=$HOME/tools/mpich2-install/bin:$PATH
-export PYTHONPATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$PYTHONPATH
-export LD_LIBRARY_PATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$LD_LIBRARY_PATH
-NUMCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
+# export PATH=$HOME/tools/mpich2-install/bin:$PATH
+# export PYTHONPATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$PYTHONPATH
+# export LD_LIBRARY_PATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$LD_LIBRARY_PATH
+# NUMCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
 ###################################################################
 
 K=128
 DATE=`date +%m%d%y`
 
-BASEDIR=/home/nlg-03/riesa/projects/alignment
+BASEDIR=.
 DATA=$BASEDIR/data
 TEST=$DATA/test
 LANGPAIR=zh-en
