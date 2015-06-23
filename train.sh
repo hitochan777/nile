@@ -58,5 +58,6 @@ nice -15 mpiexec -n $NUMCPUS $PYTHON nile.py \
   --pfe $DATA/GIZA++.m4.pfe \
   --langpair zh_ja \
   --maxepochs 2 \
+  --partial 3\
   --train \
   --k $K 1> $NAME.out 2> $NAME.err

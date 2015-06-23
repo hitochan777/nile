@@ -637,6 +637,7 @@ if __name__ == "__main__":
     flags.DEFINE_string('debiasing_weights', None, 'Features to use under de-biasing mode')
     flags.DEFINE_string('tempdir', None, 'User-defined directory location for temporary files')
     flags.DEFINE_string('score_out', None, 'output file for score')
+    flags.DEFINE_string('partial',-1,"Use first N sentences of the corpus")
     argv = FLAGS(sys.argv)
 
     if FLAGS.debiasing and FLAGS.debiasing_weights is None:
@@ -734,12 +735,16 @@ if __name__ == "__main__":
     ################################################
     # Load training examples
     ################################################
+    count = 1
     for f, e, etree in izip(file_handles['f'],
                                file_handles['e'],
                                file_handles['etrees']):
       f_instances.append(f.strip())
       e_instances.append(e.strip())
       etree_instances.append(etree.strip())
+      if FLAGS.partial!=-1 and count>= FLAGS.partial:
+        break
+      count += 1
     indices = range(len(e_instances))
     ################################################
     # Load held-out dev examples

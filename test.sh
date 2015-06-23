@@ -21,7 +21,7 @@ TEST=$DATA
 LANGPAIR=zh-ja
 PYTHON=python
 
-WEIGHTS=d061915.k10.n2..weights-2
+WEIGHTS=d062315.k10.n2..weights-2
 NAME=$WEIGHTS.test-output.a
 
 mpiexec -n 2 $PYTHON nile.py \

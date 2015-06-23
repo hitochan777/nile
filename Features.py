@@ -192,14 +192,20 @@ class LocalFeatures:
     aligned to a non-period.
     """
     name = self.ff_finalPeriodAlignedToNonPeriod.func_name
+    if eIndex != len(info['e'])-1:
+      flag=False
+      for link in links:
+        if link[0] == len(info['f'])-1:
+          flag=True
+          break
+      if not flag: 
+        return {name: 0.}
 
-    if eIndex != len(eWord)-1 and fIndex != len(fWord)-1:
-      return {name: 0.}
-
-    if eWord == "." and fWord != ".":
-      return {name: 1.}
-    else:
-      return {name: 0.}
+    if eWord == ".":
+        for link in links:
+            if info['f'][link[0]] != ".":
+                return {name: 1.}
+    return {name: 0.}
 
   def ff_isLinkedToNullWord(self, info, fWord, eWord, fIndex, eIndex, links, diagValues, currentNode = None):
     """
