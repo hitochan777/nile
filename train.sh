@@ -12,7 +12,7 @@
 # NUMCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
 ###################################################################
 
-NUMCPUS=2
+NUMCPUS=1
 
 K=10
 DATE=`date +%m%d%y`
@@ -60,4 +60,6 @@ nice -15 mpiexec -n $NUMCPUS $PYTHON nile.py \
   --maxepochs 2 \
   --partial 3\
   --train \
-  --k $K 1> $NAME.out 2> $NAME.err
+  --nto1 2\
+  --k $K 2> $NAME.err
+  # --k $K 1> $NAME.out 2> $NAME.err

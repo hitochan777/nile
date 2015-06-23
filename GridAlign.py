@@ -96,6 +96,7 @@ class Model(object):
     self.e = e
     self.lenE = len(e)
     self.lenF = len(f)
+    self.nto1 = FLAGS.nto1
 
     # GIZA++ alignments
     self.a1 = { }		# intersection
@@ -737,7 +738,8 @@ class Model(object):
     ##################################################
     # Single-link alignment
     ##################################################
-    bestTgtWords = []
+    singleBestAlignment = []
+    alignmentList = []
     for tgtIndex, tgtWord in enumerate(tgtWordList):
       currentLinks = [(tgtIndex, srcIndex)]
       scoreVector = svector.Vector()
@@ -750,7 +752,7 @@ class Model(object):
 
       # Keep track of scores for all 1-link partial alignments
       score = scoreVector.dot(self.weights)
-      bestTgtWords.append((score, tgtIndex))
+      singleBestAlignment.append((score, [tgtIndex]))
 
       singleLinkPartialAlignment = PartialGridAlignment()
       singleLinkPartialAlignment.score = score
@@ -774,64 +776,73 @@ class Model(object):
         if self.COMPUTE_FEAR:
           singleLinkPartialAlignment.fear = (1-singleLinkPartialAlignment.fscore)+singleLinkPartialAlignment.score
           self.addPartialAlignment_fear(partialAlignments_fear, singleLinkPartialAlignment, self.BEAM_SIZE)
-
+    alignmentList = singleBestAlignment
+    singleBestAlignment.sort(reverse=True)
     ##################################################
-    # Two link alignment
+    # N link alignment(N>=2)
     ##################################################
-    # Get ready for 2-link alignments
-
-    # Sort the fwords by score
-    bestTgtWords.sort(reverse=True)
-    LIMIT = max(10, len(bestTgtWords)/2)
-
-    for index1, obj1 in enumerate(bestTgtWords[0:LIMIT]):
-      for _, obj2 in enumerate(bestTgtWords[index1+1:LIMIT]):
-        # clear contents of twoLinkPartialAlignment
-        tgtIndex_a = obj1[1]
-        tgtIndex_b = obj2[1]
-        # Don't consider a pair (tgtIndex_a, tgtIndex_b) if distance between
-        # these indices > 1 (Arabic/English only).
-        # Need to debug feature that is supposed to deal with this naturally.
-        if self.LANG == "ar_en":
-          if (abs(tgtIndex_b - tgtIndex_a) > 1):
+    # Get ready for N-link alignments(N>=2)
+    for i in xrange(2,self.nto1+1): 
+      # print str(i)+"-1 link"
+      # Sort the fwords by score
+      alignmentList.sort(reverse=True)
+      # print(alignmentList)
+      newAlignmentList = []
+      LIMIT_1 = max(10, self.lenF/2)
+      LIMIT_N = max(10, self.lenF/2)
+      # print alignmentList[0:LIMIT_N]
+      for (_,na) in alignmentList[0:LIMIT_N]:# na means n link alignment
+        for (_, sa) in singleBestAlignment[0:LIMIT_1]:#sa means single-link alignment
+          if(na[-1]>=sa[0]):#sa actually always have only one element
             continue
+          # clear contents of twoLinkPartialAlignment
+          tgtIndex_a = na[-1]
+          tgtIndex_b = sa[0]
+          # Don't consider a pair (tgtIndex_a, tgtIndex_b) if distance between
+          # these indices > 1 (Arabic/English only).
+          # Need to debug feature that is supposed to deal with this naturally.
+          if self.LANG == "ar_en":
+            if (abs(tgtIndex_b - tgtIndex_a) > 1):
+              continue
 
-        tgtWord_a = tgtWordList[tgtIndex_a]
-        tgtWord_b = tgtWordList[tgtIndex_b]
-        currentLinks = [(tgtIndex_a, srcIndex), (tgtIndex_b, srcIndex)]
+          currentLinks = list(map(lambda x: (x,srcIndex),na+sa))
+          # print currentLinks
+            
+          scoreVector = svector.Vector()
+          for k, func in enumerate(self.featureTemplates):
+            value_dict = func(self.info, tgtWord, srcWord,
+                              tgtIndex, srcIndex, currentLinks,
+                              self.diagValues, currentNode)
+            for name, value in value_dict.iteritems():
+              if value != 0:
+                scoreVector[name] += value
 
-        scoreVector = svector.Vector()
-        for k, func in enumerate(self.featureTemplates):
-          value_dict = func(self.info, tgtWord, srcWord,
-                            tgtIndex, srcIndex, currentLinks,
-                            self.diagValues, currentNode)
-          for name, value in value_dict.iteritems():
-            if value != 0:
-              scoreVector[name] += value
+          score = scoreVector.dot(self.weights)
+          newAlignmentList.append((score, na+sa))
 
-        score = scoreVector.dot(self.weights)
+          NLinkPartialAlignment = PartialGridAlignment()
+          NLinkPartialAlignment.score = score
+          NLinkPartialAlignment.scoreVector = scoreVector
+          NLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
+          NLinkPartialAlignment.links = currentLinks
 
-        twoLinkPartialAlignment = PartialGridAlignment()
-        twoLinkPartialAlignment.score = score
-        twoLinkPartialAlignment.scoreVector = scoreVector
-        twoLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
-        twoLinkPartialAlignment.links = currentLinks
+          self.addPartialAlignment(partialAlignments, NLinkPartialAlignment, self.BEAM_SIZE)
+          if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
+            NLinkPartialAlignment.fscore = self.ff_fscore(NLinkPartialAlignment, span)
 
-        self.addPartialAlignment(partialAlignments, twoLinkPartialAlignment, self.BEAM_SIZE)
-        if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
-          twoLinkPartialAlignment.fscore = self.ff_fscore(twoLinkPartialAlignment, span)
+            if self.COMPUTE_ORACLE:
+              if NLinkPartialAlignment.fscore > oracleAlignment.fscore:
+                oracleAlignment = NLinkPartialAlignment
 
-          if self.COMPUTE_ORACLE:
-            if twoLinkPartialAlignment.fscore > oracleAlignment.fscore:
-              oracleAlignment = twoLinkPartialAlignment
+            if self.COMPUTE_HOPE:
+              NLinkPartialAlignment.hope = NLinkPartialAlignment.fscore + NLinkPartialAlignment.score
+              self.addPartialAlignment_hope(partialAlignments_hope, NLinkPartialAlignment, self.BEAM_SIZE)
 
-          if self.COMPUTE_HOPE:
-            twoLinkPartialAlignment.hope = twoLinkPartialAlignment.fscore + twoLinkPartialAlignment.score
-            self.addPartialAlignment_hope(partialAlignments_hope, twoLinkPartialAlignment, self.BEAM_SIZE)
+            if self.COMPUTE_FEAR:
+              NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
+              self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
 
-          if self.COMPUTE_FEAR:
-            twoLinkPartialAlignment.fear = (1-twoLinkPartialAlignment.fscore)+twoLinkPartialAlignment.score
-            self.addPartialAlignment_fear(partialAlignments_fear, twoLinkPartialAlignment, self.BEAM_SIZE)
+          alignmentList = newAlignmentList 
 
     ########################################################################
     # Finalize. Sort model-score list and then hope list.

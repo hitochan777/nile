@@ -637,7 +637,8 @@ if __name__ == "__main__":
     flags.DEFINE_string('debiasing_weights', None, 'Features to use under de-biasing mode')
     flags.DEFINE_string('tempdir', None, 'User-defined directory location for temporary files')
     flags.DEFINE_string('score_out', None, 'output file for score')
-    flags.DEFINE_string('partial',-1,"Use first N sentences of the corpus")
+    flags.DEFINE_integer('partial',-1,"Use first N sentences of the corpus")
+    flags.DEFINE_integer('nto1',2,"To how many source words can a target word be aligned")
     argv = FLAGS(sys.argv)
 
     if FLAGS.debiasing and FLAGS.debiasing_weights is None:
