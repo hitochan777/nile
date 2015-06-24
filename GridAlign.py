@@ -842,7 +842,7 @@ class Model(object):
               NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
               self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
 
-          alignmentList = newAlignmentList 
+      alignmentList = newAlignmentList 
 
     ########################################################################
     # Finalize. Sort model-score list and then hope list.

@@ -743,7 +743,7 @@ if __name__ == "__main__":
       f_instances.append(f.strip())
       e_instances.append(e.strip())
       etree_instances.append(etree.strip())
-      if FLAGS.partial!=-1 and count>= FLAGS.partial:
+      if FLAGS.train and FLAGS.partial!=-1 and count>= FLAGS.partial:
         break
       count += 1
     indices = range(len(e_instances))
