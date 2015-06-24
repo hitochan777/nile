@@ -841,8 +841,11 @@ class Model(object):
             if self.COMPUTE_FEAR:
               NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
               self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
-
+          # print "hogege"
       alignmentList = newAlignmentList 
+      # print "len(alingmentList)=",len(alignmentList)
+          # print alignmentList
+          # alignmentList = newAlignmentList 
 
     ########################################################################
     # Finalize. Sort model-score list and then hope list.
