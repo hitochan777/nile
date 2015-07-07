@@ -491,429 +491,429 @@ class LocalFeatures:
     return self.punc.has_key(string)
 
 class NonlocalFeatures:
-  def __init__(self, pef, pfe):
-    self.null_token = "*NULL*"
-    self.pef = pef
-    self.pfe = pfe
-    self.punc = {',':True,'.':True,'!':True,'?':True,"'":True,'"':True,
-                 ')':True,'(':True,':':True,';':True,'-':True,'@':True}
-    # Chinese punctuation
-    #self.punc[u'\u3002']=True # Chinese period
-    #self.punc[u'\u201c']=True # Chinese quote
-    #self.punc[u'\u201d']=True # Chinese quote
-    #self.punc[u'\uff0c']=True # Chinese comma
-    #self.punc[u'\u3001']=True # Chinese comma
-    #self.punc[u'\uff0d']=True # Chinese dash
-    #self.punc[u'\uff1f']=True # Chinese question mark
-
-  def ff_nonlocal_dummy(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Just a dummy feature. For debugging purposes only. Always returns a zero value.
-    """
-    name = self.ff_nonlocal_dummy.func_name
-    return {name: 0}
-
-  def ff_nonlocal_crossb(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Constellation features. An extension of the constellation features
-    of Liang et al. '06. These features fire for certain configuration of link
-    clusters as we combine two treenode spans.
-    """
-    name = self.ff_nonlocal_crossb.func_name
-    values = {}
-    try:
-      edge1 = childEdges[0]
-      edge2 = childEdges[1]
-      edge1_maxF = edge1.boundingBox[1][0]
-      edge2_maxF = edge2.boundingBox[1][0]
-      edge2_minF = edge2.boundingBox[0][0]
-      edge1_minF = edge1.boundingBox[0][0]
-
-      # Case 0: Equal bounding boxes
-      # [    ] [    ]
-      # [    ] [    ]
-      if edge1_maxF == edge2_maxF and edge1_minF == edge2_minF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'0___'+value] = 1
-      # Case 1 (monotonic)
-      # [    ]
-      # [    ]
-      #        [    ]
-      #        [    ]
-      elif edge1_maxF < edge2_minF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'1___'+value] = 1
-      # Case 2 (reordered)
-      #        [    ]
-      #        [    ]
-      # [    ]
-      # [    ]
-      elif edge1_minF > edge2_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'2___'+value] = 1
-      # Case 3
-      # [    ]
-      # [    ] [    ]
-      #        [    ]
-      elif edge1_maxF >= edge2_minF and edge1_maxF < edge2_maxF and edge1_minF < edge2_minF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'3___'+value] = 1
-      # Case 4
-      #        [    ]
-      # [    ] [    ]
-      # [    ] [    ]
-      # [    ]
-
-      elif edge1_minF >= edge2_minF and edge1_minF < edge2_maxF and edge1_maxF > edge2_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'4___'+value] = 1
-      # Case 5 (1 shares top of 2)
-      # [    ] [    ]
-      #        [    ]
-      elif edge1_minF == edge2_minF and edge1_maxF < edge2_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'5___'+value] = 1
-      # Case 6 (1 shares bot of 2)
-      #        [    ]
-      # [    ] [    ]
-      elif edge1_maxF == edge2_maxF and edge1_minF > edge2_minF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'6___'+value] = 1
-      # Case 7 (2 shares top of 1; same as 5 but diff bracketing)
-      # [    ] [    ]
-      # [    ]
-      elif edge2_minF == edge1_minF and edge2_maxF < edge1_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'7___'+value] = 1
-      # Case 8 (2 shares bot of 1; same as 6 but diff bracketing)
-      # [    ]
-      # [    ] [    ]
-      elif edge2_maxF == edge1_maxF and edge2_minF > edge1_minF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'8___'+value] = 1
-      # Case 9 (1 wholly contained in 2)
-      #        [    ]
-      # [    ] [    ]
-      #        [    ]
-      elif edge1_minF > edge2_minF and edge1_maxF < edge2_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'9___'+value] = 1
-      # Case 10 (2 wholly contained in 1)
-      # [    ]
-      # [    ] [    ]
-      # [    ]
-      elif edge2_minF > edge1_minF and edge2_maxF < edge1_maxF:
-          value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
-          values[name+'10___'+value] = 1
-      # else: dump links here to find out what cases we missed, if any
-    except:
-      return {}
-    return values
-
-  def ff_nonlocal_horizGridDistance(self, info,  treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    A distance metric quantifying horizontal distance between two links (f, i); (f, j)
-    d((f,i),(f,j)) = j - i
-    Necessary for sentence pairs with no etrees.
-    """
-    name = self.ff_nonlocal_horizGridDistance.func_name + '_nb'
-
-    dist = 0.0
-    if len(linkedToWords) == 0:
-      return {name: 0.}
-    spanLength = float(srcSpan[1] - srcSpan[0])
-
-    for fIndex in linkedToWords:
-      if len(linkedToWords[fIndex]) < 2:
-        continue
-      else:   # fIndex is aligned to at least two different eIndices
-              # compute distance in pairs: if list = [1,2,3], compute dist(1,2), dist(2,3)
-        for i, eIndex1 in enumerate(linkedToWords[fIndex]):
-            for _, eIndex2 in enumerate(linkedToWords[fIndex][i+1:i+2]):
-              dist += max(0.0,abs(eIndex2 - eIndex1)-1)/spanLength
-    dist /= len(linkedToWords)
-    return {name: dist}
-
-
-
-  def ff_nonlocal_isPuncAndHasMoreThanOneLink(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Binary feature fires when fWord is punctuation token and is aligned
-    to more than one e token. In a good alignment, we expect this to happen
-    rarely or never.
-    """
-    name = self.ff_nonlocal_isPuncAndHasMoreThanOneLink.func_name
-
-    val = 0.0
-    for fIndex in linkedToWords:
-      fWord = info['f'][fIndex]
-      if self.isPunctuation(fWord) and len(linkedToWords[fIndex]) > 1:
-        val += 1.0
-    return {name: val}
-
-
-  def ff_nonlocal_tgtTag_srcTag(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Fire Source-target coordination features.
-    From (Riesa et al., 2011) Section 3.2.1.
-    """
-    name = self.ff_nonlocal_tgtTag_srcTag.func_name
-
-    if treeNode.data == '_XXX_':
-      return {}
-    if info['ftree'] is None:
-      return {}
-    if len(info['ftree'].terminals) == 0:
-      return {}
-
-    tgtTag = treeNode.data
-    srcTag = ""
-    # Account for the null alignment case
-    if len(links) == 0:
-      value = "%s:%s" % (tgtTag, self.null_token)
-      return {name+'___'+value: 1}
-
-    minF = edge.boundingBox[0][0]
-    maxF = edge.boundingBox[1][0]
-    # Catch exception due to bad parse tree.
-    # Ignore error and continue.
-    try:
-      minFNode = info['ftree'].getTerminal(minF)
-      leftFTag = minFNode.data
-      rightFTag = info['ftree'].getTerminal(maxF).data
-    except:
-      return {}
-
-    if minF == maxF:
-      value = "%s:%s" % (tgtTag, leftFTag)
-      return {name+'___'+value: 1}
-    else:
-      fspan = (minF, maxF)
-      currentFNode = minFNode
-      while not containsSpan(currentFNode, fspan):
-        currentFNode = currentFNode.getParent()
-      srcTag = currentFNode.data
-      value1 =  '%s:%s' % (tgtTag,srcTag)
-      value2 = '%s:%s(%s,%s)' % (tgtTag, srcTag, leftFTag, rightFTag)
-      return {name+'___'+value1: 1,
-              name+'___'+value2: 1}
-
-  def ff_nonlocal_hminghkm(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Fire features for every translation rule extracted at the current node.
-    """
-    name = self.ff_nonlocal_hminghkm.func_name
-    if len(links) == 0:
-      return {}
-    features = defaultdict(int)
-
-    start_span = treeNode.span_start()
-    end_span = treeNode.span_end()
-    l = [ ]
-    minf = len(info['f'])
-    maxf = 0
-
-    for link in links:
-      if link[1] >= start_span and link[1] <= end_span:
-        l.append((link[0], link[1]-start_span))
-        if link[0] < minf:
-          minf = link[0]
-        if link[0] > maxf:
-          maxf = link[0]
-
-    fsubset = info['f'][minf:maxf+1]
-    links_subset = [(link[0]-minf, link[1]) for link in l]
-
-    if len(links_subset) > 0:
-      for rule in minghkm.extract(fsubset, treeNode, links_subset, start_span, hierarchical=True):
+    def __init__(self, pef, pfe):
+        self.null_token = "*NULL*"
+        self.pef = pef
+        self.pfe = pfe
+        self.punc = {',':True,'.':True,'!':True,'?':True,"'":True,'"':True,
+                     ')':True,'(':True,':':True,';':True,'-':True,'@':True}
+        # Chinese punctuation
+        #self.punc[u'\u3002']=True # Chinese period
+        #self.punc[u'\u201c']=True # Chinese quote
+        #self.punc[u'\u201d']=True # Chinese quote
+        #self.punc[u'\uff0c']=True # Chinese comma
+        #self.punc[u'\u3001']=True # Chinese comma
+        #self.punc[u'\uff0d']=True # Chinese dash
+        #self.punc[u'\uff1f']=True # Chinese question mark
+  
+    def ff_nonlocal_dummy(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Just a dummy feature. For debugging purposes only. Always returns a zero value.
+        """
+        name = self.ff_nonlocal_dummy.func_name
+        return {name: 0}
+  
+    def ff_nonlocal_crossb(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Constellation features. An extension of the constellation features
+        of Liang et al. '06. These features fire for certain configuration of link
+        clusters as we combine two treenode spans.
+        """
+        name = self.ff_nonlocal_crossb.func_name
+        values = {}
         try:
-          ruleRoot = rule.e.data
+          edge1 = childEdges[0]
+          edge2 = childEdges[1]
+          edge1_maxF = edge1.boundingBox[1][0]
+          edge2_maxF = edge2.boundingBox[1][0]
+          edge2_minF = edge2.boundingBox[0][0]
+          edge1_minF = edge1.boundingBox[0][0]
+  
+          # Case 0: Equal bounding boxes
+          # [    ] [    ]
+          # [    ] [    ]
+          if edge1_maxF == edge2_maxF and edge1_minF == edge2_minF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'0___'+value] = 1
+          # Case 1 (monotonic)
+          # [    ]
+          # [    ]
+          #        [    ]
+          #        [    ]
+          elif edge1_maxF < edge2_minF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'1___'+value] = 1
+          # Case 2 (reordered)
+          #        [    ]
+          #        [    ]
+          # [    ]
+          # [    ]
+          elif edge1_minF > edge2_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'2___'+value] = 1
+          # Case 3
+          # [    ]
+          # [    ] [    ]
+          #        [    ]
+          elif edge1_maxF >= edge2_minF and edge1_maxF < edge2_maxF and edge1_minF < edge2_minF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'3___'+value] = 1
+          # Case 4
+          #        [    ]
+          # [    ] [    ]
+          # [    ] [    ]
+          # [    ]
+  
+          elif edge1_minF >= edge2_minF and edge1_minF < edge2_maxF and edge1_maxF > edge2_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'4___'+value] = 1
+          # Case 5 (1 shares top of 2)
+          # [    ] [    ]
+          #        [    ]
+          elif edge1_minF == edge2_minF and edge1_maxF < edge2_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'5___'+value] = 1
+          # Case 6 (1 shares bot of 2)
+          #        [    ]
+          # [    ] [    ]
+          elif edge1_maxF == edge2_maxF and edge1_minF > edge2_minF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'6___'+value] = 1
+          # Case 7 (2 shares top of 1; same as 5 but diff bracketing)
+          # [    ] [    ]
+          # [    ]
+          elif edge2_minF == edge1_minF and edge2_maxF < edge1_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'7___'+value] = 1
+          # Case 8 (2 shares bot of 1; same as 6 but diff bracketing)
+          # [    ]
+          # [    ] [    ]
+          elif edge2_maxF == edge1_maxF and edge2_minF > edge1_minF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'8___'+value] = 1
+          # Case 9 (1 wholly contained in 2)
+          #        [    ]
+          # [    ] [    ]
+          #        [    ]
+          elif edge1_minF > edge2_minF and edge1_maxF < edge2_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'9___'+value] = 1
+          # Case 10 (2 wholly contained in 1)
+          # [    ]
+          # [    ] [    ]
+          # [    ]
+          elif edge2_minF > edge1_minF and edge2_maxF < edge1_maxF:
+              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              values[name+'10___'+value] = 1
+          # else: dump links here to find out what cases we missed, if any
         except:
-          # Probably a blank line or a bad rule?
-          continue
-
-        rulestr = str(rule)
-        rulestr = rulestr.replace(" ","_")
-        features[name+'___'+rulestr] = 1
-
-    return features
-
-  def ff_nonlocal_sameWordLinks(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    Fire feature when fWord linked to more than one eWord of the same type.
-    """
-    name = self.ff_nonlocal_sameWordLinks.func_name
-
-    penalty = 0.0
-    if len(links) > 1:
-      for fIndex in linkedToWords:
-        if len(linkedToWords[fIndex]) < 2:
-          continue
-        eWords = defaultdict(int)
-        for eIndex in linkedToWords[fIndex]:
-          eWord = info['e'][eIndex]
-          eWords[eWord] += 1
-        penalty += sum([count-1 for count in eWords.values()])
-        # Normalize
-        penalty /= (tgtSpan[1] - tgtSpan[0] + 1)
-    return {name: penalty}
-
-  def ff_nonlocal_treeDistance1(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
-    """
-    A distance metric quantifying "tree distance" between two links (f, i); (f, j)
-    """
-    name = self.ff_nonlocal_treeDistance1.func_name + '_nb'
-
-    dist = 0.0
-    linkedToWords_copy = dict(linkedToWords)
-    if tgtSpan is None:
-      return {name: 0.}
-    tgtSpanDist = tgtSpan[1] - tgtSpan[0]
-    if tgtSpanDist == 0:
-      return {name: 0.}
-
-    for fIndex in linkedToWords_copy:
-      if len(linkedToWords_copy[fIndex]) < 2:
-        continue
-      else:   # fIndex is aligned to at least two different eIndices
-              # compute distance in pairs: if list = [1,2,3], compute dist(1,2), dist(2,3)
-              # if list has length n, we will have n-1 distance computations
-
-        linkedToWords_copy[fIndex].sort()
-        listlength = len(linkedToWords_copy[fIndex])
-        for i in xrange(listlength-1):
-          # eIndex1 and eIndex2 will always be the smallest, and second-smallest indices, respectively.
-          eIndex1 = linkedToWords_copy[fIndex][0]
-          eIndex2 = linkedToWords_copy[fIndex][1]
-          linkedToWords_copy[fIndex] = linkedToWords_copy[fIndex][1:]
-          node1 = info['etree'].getTerminal(eIndex1).getParent()
-          node2 = info['etree'].getTerminal(eIndex2).getParent()
-          if treeDistValues.has_key((eIndex1, eIndex2)):
-            dist += treeDistValues[(eIndex1,eIndex2)]
-          else:
-            val = self.treeDistance1(info['etree'], node1, node2)
-            treeDistValues[(eIndex1,eIndex2)] = val
-            dist += val
-
-    dist /= tgtSpanDist
-    return {name: dist}
-
-  def ff_nonlocal_treeDistance2(self, info, treeNode, edge, links, srcSpan, tgtSpan):
-    """
-    Another variant of tree-distance.
-    """
-    dist = 0.0
-    linkedToWords = { }
-    for link in links:
-      fIndex = link[0]
-      eIndex = link[1]
-
-      if not linkedToWords.has_key(fIndex):
-        linkedToWords[fIndex] = [ ]
-      linkedToWords[fIndex].append(eIndex)
-
-    for fIndex in linkedToWords:
-      if len(linkedToWords[fIndex]) < 2:
-        return 0.0
-      else:   # fIndex is aligned to at least two different eIndices
-              # compute distance in pairs: if list = [1,2,3],
-              # compute dist(1,2), dist(2,3)
-        for i, eIndex1 in enumerate(linkedToWords[fIndex]):
-          for _, eIndex2 in enumerate(linkedToWords[fIndex][i+1:i+2]):
-            node1 = info['etree'].getTerminal(eIndex1).getParent()
-            node2 = info['etree'].getTerminal(eIndex2).getParent()
-            dist += self.treeDistance2(info['etree'], node1, node2)
-    return dist
-
-  ################################################################################
-  # treeDistance(self, node1, node2):
-  # Compute tree distance between two nodes in a tree
-  # distance = max_i(distance from node i to common ancestor)
-  # Variant 1: distance += 1 with each single move up the tree
-  # Variant 2: distance += (height(currentNode.parent) - height(currentNode))
-  # In the case of Variant 2, the distance is equivalent to height(commonAncestor)
-  ################################################################################
-
-  def treeDistance1(self, etree, node1, node2):
-    units1 = 0
-    units2 = 0
-    distance = 0
-    skips1 = 0
-    skips2 = 0
-    # YCA =  "youngest common ancestor" i.e., the node with minimal height that
-    # dominates both node1 and node2
-
-    # Compute number of hops from node 1 to the YCA and from node2 to the YCA
-    # Keep track of single-child non-perterminal nodes along each path and subtract the number
-    # we encounter from the total hops, e.g. in NPC(... NPB(NN(dog))) NPB is effectively skipped.
-
-    while (node1 is not node2):
-      node1depth = node1.depth()
-      node2depth = node2.depth()
-      if node1depth == node2depth:
-        node1 = node1.getParent()
-        node2 = node2.getParent()
-        units1 += 1
-        units2 += 1
-        if len(node1.children) == 1:
-          skips1 += 1
-        if len(node2.children) == 1:
-          skips2 += 1
-      elif node1depth < node2depth:
-        node1 = node1.getParent()
-        units1 += 1
-        if len(node1.children) == 1:
-          skips1 += 1
-      elif node1depth > node2depth:
-        node2 = node2.getParent()
-        units2 += 1
-        if len(node2.children) == 1:
-          skips2 += 1
-
-    # Both node1 and node2 both point to the YCA at this point.
-    # What is the depth of the YCA? Use this to normalize.
-    #youngestCommonAncestorDepth = node1.depth()
-    hops1 = units1 - skips1
-    hops2 = units2 - skips2
-    distance = hops1 + hops2
-    distance = max(0, distance-3)
-   # if hops1 == 1 and hops2 == 1:
-   #     distance = 0.0
-    #distance /= float(self.etree.root.depth())
-    #distance /= youngestCommonAncestorDepth
-    #distance *= -1.0
-    return distance
-
-  def treeDistance2(self, etree, node1, node2):
-    units1 = 0
-    units2 = 0
-    distance = 0
-    pointer1 = node1
-    pointer2 = node2
-
-    while (node1 is not node2):
-      node1depth = node1.depth()
-      node2depth = node2.depth()
-      if node1depth == node2depth:
-        node1 = node1.getParent()
-        node2 = node2.getParent()
-        units1 += (node1.depth() - node1depth)
-        units2 += (node2.depth() - node2depth)
-      elif node1depth < node2depth:
-        node1 = node1.getParent()
-        units1 += (node1.depth() - node1depth)
-      elif node1depth > node2depth:
-        node2 = node2.getParent()
-        units2 += (node2.depth() - node2depth)
-    distance = float(max(units1, units2))
-    if distance == 1:
-      distance = 0
-    distance /= etree.root.depth()
-    distance *= -1.0
-    return distance
-
-  def isPunctuation(self, string):
-    """
-    Return True if string is one of  , . ! ? ' " ( ) : ; - @ etc.
-    """
-    return self.punc.has_key(string)
+          return {}
+        return values
+  
+    def ff_nonlocal_horizGridDistance(self, info,  treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        A distance metric quantifying horizontal distance between two links (f, i); (f, j)
+        d((f,i),(f,j)) = j - i
+        Necessary for sentence pairs with no etrees.
+        """
+        name = self.ff_nonlocal_horizGridDistance.func_name + '_nb'
+  
+        dist = 0.0
+        if len(linkedToWords) == 0:
+          return {name: 0.}
+        spanLength = float(srcSpan[1] - srcSpan[0])
+  
+        for fIndex in linkedToWords:
+          if len(linkedToWords[fIndex]) < 2:
+            continue
+          else:   # fIndex is aligned to at least two different eIndices
+                  # compute distance in pairs: if list = [1,2,3], compute dist(1,2), dist(2,3)
+            for i, eIndex1 in enumerate(linkedToWords[fIndex]):
+                for _, eIndex2 in enumerate(linkedToWords[fIndex][i+1:i+2]):
+                  dist += max(0.0,abs(eIndex2 - eIndex1)-1)/spanLength
+        dist /= len(linkedToWords)
+        return {name: dist}
+  
+  
+  
+    def ff_nonlocal_isPuncAndHasMoreThanOneLink(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Binary feature fires when fWord is punctuation token and is aligned
+        to more than one e token. In a good alignment, we expect this to happen
+        rarely or never.
+        """
+        name = self.ff_nonlocal_isPuncAndHasMoreThanOneLink.func_name
+  
+        val = 0.0
+        for fIndex in linkedToWords:
+          fWord = info['f'][fIndex]
+          if self.isPunctuation(fWord) and len(linkedToWords[fIndex]) > 1:
+            val += 1.0
+        return {name: val}
+  
+  
+    def ff_nonlocal_tgtTag_srcTag(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Fire Source-target coordination features.
+        From (Riesa et al., 2011) Section 3.2.1.
+        """
+        name = self.ff_nonlocal_tgtTag_srcTag.func_name
+  
+        if treeNode.data == '_XXX_':
+          return {}
+        if info['ftree'] is None:
+          return {}
+        if len(info['ftree'].terminals) == 0:
+          return {}
+  
+        tgtTag = treeNode.data
+        srcTag = ""
+        # Account for the null alignment case
+        if len(links) == 0:
+          value = "%s:%s" % (tgtTag, self.null_token)
+          return {name+'___'+value: 1}
+  
+        minF = edge.boundingBox[0][0]
+        maxF = edge.boundingBox[1][0]
+        # Catch exception due to bad parse tree.
+        # Ignore error and continue.
+        try:
+          minFNode = info['ftree'].getTerminal(minF)
+          leftFTag = minFNode.data
+          rightFTag = info['ftree'].getTerminal(maxF).data
+        except:
+          return {}
+  
+        if minF == maxF:
+          value = "%s:%s" % (tgtTag, leftFTag)
+          return {name+'___'+value: 1}
+        else:
+          fspan = (minF, maxF)
+          currentFNode = minFNode
+          while not containsSpan(currentFNode, fspan):
+            currentFNode = currentFNode.getParent()
+          srcTag = currentFNode.data
+          value1 =  '%s:%s' % (tgtTag,srcTag)
+          value2 = '%s:%s(%s,%s)' % (tgtTag, srcTag, leftFTag, rightFTag)
+          return {name+'___'+value1: 1,
+                  name+'___'+value2: 1}
+  
+    def ff_nonlocal_hminghkm(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Fire features for every translation rule extracted at the current node.
+        """
+        name = self.ff_nonlocal_hminghkm.func_name
+        if len(links) == 0:
+          return {}
+        features = defaultdict(int)
+  
+        start_span = treeNode.span_start()
+        end_span = treeNode.span_end()
+        l = [ ]
+        minf = len(info['f'])
+        maxf = 0
+  
+        for link in links:
+          if link[1] >= start_span and link[1] <= end_span:
+            l.append((link[0], link[1]-start_span))
+            if link[0] < minf:
+              minf = link[0]
+            if link[0] > maxf:
+              maxf = link[0]
+  
+        fsubset = info['f'][minf:maxf+1]
+        links_subset = [(link[0]-minf, link[1]) for link in l]
+  
+        if len(links_subset) > 0:
+          for rule in minghkm.extract(fsubset, treeNode, links_subset, start_span, hierarchical=True):
+            try:
+              ruleRoot = rule.e.data
+            except:
+              # Probably a blank line or a bad rule?
+              continue
+  
+            rulestr = str(rule)
+            rulestr = rulestr.replace(" ","_")
+            features[name+'___'+rulestr] = 1
+  
+        return features
+  
+    def ff_nonlocal_sameWordLinks(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        Fire feature when fWord linked to more than one eWord of the same type.
+        """
+        name = self.ff_nonlocal_sameWordLinks.func_name
+  
+        penalty = 0.0
+        if len(links) > 1:
+          for fIndex in linkedToWords:
+            if len(linkedToWords[fIndex]) < 2:
+              continue
+            eWords = defaultdict(int)
+            for eIndex in linkedToWords[fIndex]:
+              eWord = info['e'][eIndex]
+              eWords[eWord] += 1
+            penalty += sum([count-1 for count in eWords.values()])
+            # Normalize
+            penalty /= (tgtSpan[1] - tgtSpan[0] + 1)
+        return {name: penalty}
+  
+    def ff_nonlocal_treeDistance1(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
+        """
+        A distance metric quantifying "tree distance" between two links (f, i); (f, j)
+        """
+        name = self.ff_nonlocal_treeDistance1.func_name + '_nb'
+  
+        dist = 0.0
+        linkedToWords_copy = dict(linkedToWords)
+        if tgtSpan is None:
+            return {name: 0.}
+        tgtSpanDist = tgtSpan[1] - tgtSpan[0]
+        if tgtSpanDist == 0:
+            return {name: 0.}
+  
+        for fIndex in linkedToWords_copy:
+            if len(linkedToWords_copy[fIndex]) < 2:
+                continue
+            else:   # fIndex is aligned to at least two different eIndices
+                  # compute distance in pairs: if list = [1,2,3], compute dist(1,2), dist(2,3)
+                  # if list has length n, we will have n-1 distance computations
+  
+                linkedToWords_copy[fIndex].sort()
+                listlength = len(linkedToWords_copy[fIndex])
+                for i in xrange(listlength-1):
+                    # eIndex1 and eIndex2 will always be the smallest, and second-smallest indices, respectively.
+                    eIndex1 = linkedToWords_copy[fIndex][0]
+                    eIndex2 = linkedToWords_copy[fIndex][1]
+                    linkedToWords_copy[fIndex] = linkedToWords_copy[fIndex][1:]
+                    node1 = info['etree'].getTerminal(eIndex1).getParent()
+                    node2 = info['etree'].getTerminal(eIndex2).getParent()
+                    if treeDistValues.has_key((eIndex1, eIndex2)):
+                        dist += treeDistValues[(eIndex1,eIndex2)]
+                    else:
+                        val = self.treeDistance1(info['etree'], node1, node2)
+                        treeDistValues[(eIndex1,eIndex2)] = val
+                        dist += val
+  
+            dist /= tgtSpanDist
+        return {name: dist}
+  
+    def ff_nonlocal_treeDistance2(self, info, treeNode, edge, links, srcSpan, tgtSpan):
+        """
+        Another variant of tree-distance.
+        """
+        dist = 0.0
+        linkedToWords = { }
+        for link in links:
+            fIndex = link[0]
+            eIndex = link[1]
+  
+            if not linkedToWords.has_key(fIndex):
+                linkedToWords[fIndex] = [ ]
+            linkedToWords[fIndex].append(eIndex)
+  
+        for fIndex in linkedToWords:
+            if len(linkedToWords[fIndex]) < 2:
+              return 0.0
+            else:   # fIndex is aligned to at least two different eIndices
+                  # compute distance in pairs: if list = [1,2,3],
+                  # compute dist(1,2), dist(2,3)
+                for i, eIndex1 in enumerate(linkedToWords[fIndex]):
+                    for _, eIndex2 in enumerate(linkedToWords[fIndex][i+1:i+2]):
+                        node1 = info['etree'].getTerminal(eIndex1).getParent()
+                        node2 = info['etree'].getTerminal(eIndex2).getParent()
+                        dist += self.treeDistance2(info['etree'], node1, node2)
+        return dist
+  
+    ################################################################################
+    # treeDistance(self, node1, node2):
+    # Compute tree distance between two nodes in a tree
+    # distance = max_i(distance from node i to common ancestor)
+    # Variant 1: distance += 1 with each single move up the tree
+    # Variant 2: distance += (height(currentNode.parent) - height(currentNode))
+    # In the case of Variant 2, the distance is equivalent to height(commonAncestor)
+    ################################################################################
+  
+    def treeDistance1(self, etree, node1, node2):
+        units1 = 0
+        units2 = 0
+        distance = 0
+        skips1 = 0
+        skips2 = 0
+        # YCA =  "youngest common ancestor" i.e., the node with minimal height that
+        # dominates both node1 and node2
+  
+        # Compute number of hops from node 1 to the YCA and from node2 to the YCA
+        # Keep track of single-child non-perterminal nodes along each path and subtract the number
+        # we encounter from the total hops, e.g. in NPC(... NPB(NN(dog))) NPB is effectively skipped.
+  
+        while (node1 is not node2):
+            node1depth = node1.depth()
+            node2depth = node2.depth()
+            if node1depth == node2depth:
+                node1 = node1.getParent()
+                node2 = node2.getParent()
+                units1 += 1
+                units2 += 1
+                if len(node1.children) == 1:
+                    skips1 += 1
+                if len(node2.children) == 1:
+                    skips2 += 1
+            elif node1depth < node2depth:
+                node1 = node1.getParent()
+                units1 += 1
+                if len(node1.children) == 1:
+                    skips1 += 1
+            elif node1depth > node2depth:
+                node2 = node2.getParent()
+                units2 += 1
+                if len(node2.children) == 1:
+                    skips2 += 1
+  
+        # Both node1 and node2 both point to the YCA at this point.
+        # What is the depth of the YCA? Use this to normalize.
+        #youngestCommonAncestorDepth = node1.depth()
+        hops1 = units1 - skips1
+        hops2 = units2 - skips2
+        distance = hops1 + hops2
+        distance = max(0, distance-3)
+       # if hops1 == 1 and hops2 == 1:
+       #     distance = 0.0
+        #distance /= float(self.etree.root.depth())
+        #distance /= youngestCommonAncestorDepth
+        #distance *= -1.0
+        return distance
+  
+    def treeDistance2(self, etree, node1, node2):
+        units1 = 0
+        units2 = 0
+        distance = 0
+        pointer1 = node1
+        pointer2 = node2
+  
+        while (node1 is not node2):
+            node1depth = node1.depth()
+            node2depth = node2.depth()
+            if node1depth == node2depth:
+                node1 = node1.getParent()
+                node2 = node2.getParent()
+                units1 += (node1.depth() - node1depth)
+                units2 += (node2.depth() - node2depth)
+            elif node1depth < node2depth:
+                node1 = node1.getParent()
+                units1 += (node1.depth() - node1depth)
+            elif node1depth > node2depth:
+                node2 = node2.getParent()
+                units2 += (node2.depth() - node2depth)
+        distance = float(max(units1, units2))
+        if distance == 1:
+            distance = 0
+        distance /= etree.root.depth()
+        distance *= -1.0
+        return distance
+  
+    def isPunctuation(self, string):
+        """
+        Return True if string is one of  , . ! ? ' " ( ) : ; - @ etc.
+        """
+        return self.punc.has_key(string)
