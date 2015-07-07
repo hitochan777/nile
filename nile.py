@@ -38,6 +38,7 @@ import io_helper
 import mpi
 import svector
 from pyglog import *
+from DependencyParserHelper import *
 
 FLAGS = flags.FLAGS
 
@@ -639,6 +640,7 @@ if __name__ == "__main__":
     flags.DEFINE_string('score_out', None, 'output file for score')
     flags.DEFINE_integer('partial',-1,"Use first N sentences of the corpus")
     flags.DEFINE_integer('nto1',2,"To how many source words can a target word be aligned")
+    # flags.DEFINE_string("tree_type","dep","Type of tree structure to be used, dep: dependency tree, const: constituency tree")
     argv = FLAGS(sys.argv)
 
     if FLAGS.debiasing and FLAGS.debiasing_weights is None:
@@ -737,62 +739,62 @@ if __name__ == "__main__":
     # Load training examples
     ################################################
     count = 1
-    for f, e, etree in izip(file_handles['f'],
-                               file_handles['e'],
-                               file_handles['etrees']):
-      f_instances.append(f.strip())
-      e_instances.append(e.strip())
-      etree_instances.append(etree.strip())
-      if FLAGS.train and FLAGS.partial!=-1 and count>= FLAGS.partial:
-        break
-      count += 1
+    etree_file_handle = readDependencyFile(FLAGS.etrees)
+    for f, e, etree in izip(file_handles['f'], file_handles['e'], etree_file_handle):
+        f_instances.append(f.strip())
+        e_instances.append(e.strip())
+        etree_instances.append(etree.strip())
+        if FLAGS.train and FLAGS.partial!=-1 and count>= FLAGS.partial:
+            break
+        count += 1
     indices = range(len(e_instances))
     ################################################
     # Load held-out dev examples
     ################################################
+    etreedev_file_handle = readDependencyFile(FLAGS.etreesdev)
     if FLAGS.train:
-      for g in file_handles['gold']:
-        gold_instances.append(g.strip())
-      for f, e, etree, g in izip(file_handles['fdev'],
+        for g in file_handles['gold']:
+            gold_instances.append(g.strip())
+        for f, e, etree, g in izip(file_handles['fdev'],
                                  file_handles['edev'],
-                                 file_handles['etreesdev'],
+                                 etreedev_file_handle,
                                  file_handles['golddev']):
-        f_dev_instances.append(f.strip())
-        e_dev_instances.append(e.strip())
-        etree_dev_instances.append(etree.strip())
-        gold_dev_instances.append(g.strip())
-      indices_dev = range(len(e_dev_instances))
+            f_dev_instances.append(f.strip())
+            e_dev_instances.append(e.strip())
+            etree_dev_instances.append(etree.strip())
+            gold_dev_instances.append(g.strip())
+        indices_dev = range(len(e_dev_instances))
 
     ################################################
     # LOAD OPTIONAL EXTRAS
     ################################################
     if FLAGS.ftrees is not None:
-      for ftree in file_handles['ftrees']:
-        ftree_instances.append(ftree.strip())
-      if FLAGS.train:
-        for ftree in file_handles['ftreesdev']:
-          ftree_dev_instances.append(ftree.strip())
+        for ftree in readDependencyFile(FLAGS.ftrees):
+            ftree_instances.append(ftree.strip())
+        if FLAGS.train:
+            for ftree in readDependencyFile(FLAGS.ftreesdev):
+                ftree_dev_instances.append(ftree.strip())
 
     if FLAGS.inverse is not None:
         for inverse in file_handles['inverse']:
-          inverse_instances.append(inverse.strip())
+            inverse_instances.append(inverse.strip())
         if FLAGS.train:
             for inverse in file_handles['inverse_dev']:
-              inverse_dev_instances.append(inverse.strip())
+                inverse_dev_instances.append(inverse.strip())
 
     if FLAGS.a1 is not None:
-      for a1 in file_handles['a1']:
-        a1_instances.append(a1.strip())
-      if FLAGS.train:
-        for a1 in file_handles['a1_dev']:
-          a1_dev_instances.append(a1.strip())
+        for a1 in file_handles['a1']:
+            a1_instances.append(a1.strip())
+        if FLAGS.train:
+            for a1 in file_handles['a1_dev']:
+                a1_dev_instances.append(a1.strip())
 
     if FLAGS.a2 is not None:
-      for a2 in file_handles['a2']:
-        a2_instances.append(a2.strip())
-      if FLAGS.train:
-        for a2 in file_handles['a2_dev']:
-          a2_dev_instances.append(a2.strip())
+        for a2 in file_handles['a2']:
+            a2_instances.append(a2.strip())
+        if FLAGS.train:
+            for a2 in file_handles['a2_dev']:
+                a2_dev_instances.append(a2.strip())
 
 
     ###########################################################
@@ -800,63 +802,62 @@ if __name__ == "__main__":
     ###########################################################
     if FLAGS.weights is not None:
       # Restart from another parameter vector
-      weights = readWeights(file_handles['weights'])
+        weights = readWeights(file_handles['weights'])
     else:
       # Start with empty weight vector
-      weights = None
+        weights = None
 
     debiasing_weights = None
     if FLAGS.debiasing_weights is not None:
-      debiasing_weights_file = open(FLAGS.debiasing_weights, "r")
-      debiasing_weights = readWeights(debiasing_weights_file)
+        debiasing_weights_file = open(FLAGS.debiasing_weights, "r")
+        debiasing_weights = readWeights(debiasing_weights_file)
 
     # Rank 0 is the master node
     # It will delegate to other nodes and collect processed information
     weights_out = None
     if myRank == 0 and FLAGS.train:
-      if FLAGS.weights_out is not None:
-        weights_out = open(FLAGS.weights_out, 'w')
-        print FLAGS.weights_out
-      else:
-        weights_out = open("weights."+pid, "w")
+        if FLAGS.weights_out is not None:
+            weights_out = open(FLAGS.weights_out, 'w')
+            print FLAGS.weights_out
+        else:
+            weights_out = open("weights."+pid, "w")
     ###########################################################
     # Initialize blobs to pass to training and decoding methods
     # A Binary Large OBject (BLOB) is a collection of binary data stored as a single entity in a database management system.
     ###########################################################
     common_blob = {
-      'pef': pef,
-      'pfe': pfe,
-      'localFeatures': localFeatures,
-      'nonlocalFeatures': nonlocalFeatures,
-      'tmpdir': tmpdir
+        'pef': pef,
+        'pfe': pfe,
+        'localFeatures': localFeatures,
+        'nonlocalFeatures': nonlocalFeatures,
+        'tmpdir': tmpdir
     }
     training_blob = {
-      'f_instances': f_instances,
-      'e_instances': e_instances,
-      'etree_instances': etree_instances,
-      'ftree_instances': ftree_instances,
-      'gold_instances': gold_instances,
-      'a1_instances': a1_instances,
-      'a2_instances': a2_instances,
-      'inverse_instances': inverse_instances
+        'f_instances': f_instances,
+        'e_instances': e_instances,
+        'etree_instances': etree_instances,
+        'ftree_instances': ftree_instances,
+        'gold_instances': gold_instances,
+        'a1_instances': a1_instances,
+        'a2_instances': a2_instances,
+        'inverse_instances': inverse_instances
     }
     if FLAGS.train:
-      heldout_blob = {
-        'f_instances': f_dev_instances,
-        'e_instances': e_dev_instances,
-        'etree_instances': etree_dev_instances,
-        'ftree_instances': ftree_dev_instances,
-        'gold_instances': gold_dev_instances,
-        'a1_instances': a1_dev_instances,
-        'a2_instances': a2_dev_instances,
-        'inverse_instances': inverse_dev_instances
-      }
+        heldout_blob = {
+            'f_instances': f_dev_instances,
+            'e_instances': e_dev_instances,
+            'etree_instances': etree_dev_instances,
+            'ftree_instances': ftree_dev_instances,
+            'gold_instances': gold_dev_instances,
+            'a1_instances': a1_dev_instances,
+            'a2_instances': a2_dev_instances,
+            'inverse_instances': inverse_dev_instances
+        }
     training_blob.update(common_blob)
     if FLAGS.train:
-      heldout_blob.update(common_blob)
+        heldout_blob.update(common_blob)
 
     if FLAGS.train:
-      do_training(indices, training_blob, heldout_blob, weights, weights_out, debiasing_weights)
+        do_training(indices, training_blob, heldout_blob, weights, weights_out, debiasing_weights)
     elif FLAGS.align:
-      decode_parallel(weights, indices, training_blob, "align",
-                      out=file_handles['out'],score_out=FLAGS.score_out)
+        decode_parallel(weights, indices, training_blob, "align",out=file_handles['out'],score_out=FLAGS.score_out)

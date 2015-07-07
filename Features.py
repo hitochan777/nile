@@ -74,7 +74,7 @@ class LocalFeatures:
     Return average p(e|f)
     """
     if currentNode is not None:
-      pos = currentNode.data
+      pos = currentNode.data["pos"]
     name = self.ff_probEgivenF.func_name + '___' + pos + '_nb'
 
     # Calculate feature function value
@@ -111,7 +111,7 @@ class LocalFeatures:
     Average (Normalized) Distance from the point (fIndex,eIndex) to the grid diagonal
     """
     if currentNode is not None:
-      pos = currentNode.data
+        pos = currentNode.data["pos"]
     name = self.ff_distToDiag.func_name + '___' + pos + '_nb'
 
     val = 0.0
@@ -212,7 +212,7 @@ class LocalFeatures:
     Binary feature fires if eWord is aligned to nothing.
     """
     if currentNode is not None:
-      pos = currentNode.data
+      pos = currentNode.data["pos"]
     name = self.ff_isLinkedToNullWord.func_name + '___' + pos
 
     if len(links) == 0:
@@ -245,12 +245,12 @@ class LocalFeatures:
     # Only the fIndex will vary.
 
     if currentNode is not None:
-      pos = currentNode.data
+        pos = currentNode.data["pos"]
     name = self.ff_jumpDistance.func_name + '___' + pos + '_nb'
 
     maxdiff = 0
     if len(links) <= 1:
-      return {name: 0}
+        return {name: 0}
 
     for i, link1 in enumerate(links):
       for link2 in links[i+1:i+2]:
@@ -274,8 +274,7 @@ class LocalFeatures:
     function words, e.g. (TO, WP$, CC, ").
     """
     if currentNode is not None:
-      pos = currentNode.data
-
+        pos = currentNode.data["pos"]
     name = self.ff_lexprob_zero.func_name + '___' + pos + '_nb'
 
     # Calculate feature function value
@@ -380,7 +379,7 @@ class LocalFeatures:
     Return p(e|f)
     """
     if currentNode is not None:
-      pos = currentNode.data
+        pos = currentNode.data["pos"]
     name = self.ff_probEgivenF.func_name + '___' + pos + '_nb'
 
     # Calculate feature function value
@@ -403,7 +402,7 @@ class LocalFeatures:
     Return p(f|e)
     """
     if currentNode is not None:
-      pos = currentNode.data
+        pos = currentNode.data["pos"]
     name = self.ff_probFgivenE.func_name + '___' + pos + '_nb'
 
     # Calculate feature function value

@@ -27,14 +27,14 @@ NAME=d$DATE.k${K}.n$NUMCPUS.$LANGPAIR
 echo "mpiexec -n $NUMCPUS $PYTHON nile.py\\"
 echo "--f $TRAIN/train.f\\"
 echo "--e $TRAIN/train.e\\"
-echo "--gold $TRAIN/train.a\\"
+echo "--gold $TRAIN/train.a.f-e\\"
 echo "--etrees $TRAIN/train.e-parse\\"
 # echo "--ftrees $TRAIN/train.f-parse\\"
 echo "--fdev $DEV/dev.f\\"
 echo "--edev $DEV/dev.e\\"
 echo "--etreesdev $DEV/dev.e-parse\\"
 # echo "--ftreesdev $DEV/dev.f-parse\\"
-echo "--golddev $DEV/dev.a\\"
+echo "--golddev $DEV/dev.a.f-e\\"
 echo "--evcb $DATA/e.vcb\\"
 echo "--fvcb $DATA/f.vcb\\"
 echo "--pef $DATA/GIZA++.m4.pef\\"
@@ -46,12 +46,12 @@ echo "--k $K 1> $NAME.out 2> $NAME.err\\"
 nice -15 mpiexec -n $NUMCPUS $PYTHON nile.py \
   --f $TRAIN/train.f \
   --e $TRAIN/train.e \
-  --gold $TRAIN/train.a \
+  --gold $TRAIN/train.a.f-e \
   --etrees $TRAIN/train.e-parse \
   --fdev $DEV/dev.f \
   --edev $DEV/dev.e \
   --etreesdev $DEV/dev.e-parse \
-  --golddev $DEV/dev.a \
+  --golddev $DEV/dev.a.f-e \
   --evcb $DATA/e.vcb \
   --fvcb $DATA/f.vcb \
   --pef $DATA/GIZA++.m4.pef  \

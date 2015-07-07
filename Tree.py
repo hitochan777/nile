@@ -1,16 +1,15 @@
 import weakref
 
 class Tree(object):
-  def __init__(self, data = None, children=None):
-    self.setup(data, children)
+  def __init__(self, data = None, children = None):
+    self.setup(data,children)
 
   def setup(self, data, children = None):
     self.data = data
     self.parent = None
-    self.children = []
     for ci, child in enumerate(self.children):
-      child.parent = weakref.ref(self)
-      child.order = ci
+        child.parent = weakref.ref(self)
+        child.order = ci
     self.i = -1
     self.j = -1
 
@@ -63,6 +62,9 @@ class Tree(object):
       self.children[j].order = j
 
   def frontier(self):
+    """
+    Get a flattened representation of tree, using tree
+    """
     if len(self.children) != 0:
       l = []
       for child in self.children:

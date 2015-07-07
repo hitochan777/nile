@@ -33,13 +33,6 @@ class NLPTree(Tree):
     self.partialAlignments_hope = []
     self.partialAlignments_fear = []
 
-  def write(self):
-    """
-    Print a PTB-style string encoding of the tree
-    """
-    self.dfs_write_ptb()
-    print
-
   def getPreTerminals(self):
     """
     Return a list of preterminal nodes in the span of this node
@@ -107,15 +100,15 @@ class NLPTree(Tree):
     for j in range(i,len(self.children)):
       self.children[j].order = j
 
-  def __str__(self):
+  def __toString__(self, depth):
     if len(self.children) != 0:
-      s = "(" + str(self.data)
+      s = "\t" * depth + str(self.data) + "\n"
       for child in self.children:
-        s += " " + child.__str__()
-      s += ")"
+        s +=  child.__toString__(depth+1)
       return s
     else:
-      s = str(self.data)
-      s = re.sub("\(", "-LRB-", s)
-      s = re.sub("\)", "-RRB-", s)
+      s = "\t" * depth + str(self.data) + "\n"
       return s
+
+  def __str__(self):
+      return self.__toString__(0)

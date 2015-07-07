@@ -28,6 +28,7 @@ from operator import attrgetter
 from heapq import heappush, heapify, heappop, heappushpop
 from collections import defaultdict
 
+from DependencyParserHelper import *
 from TerminalNode import TerminalNode
 from Alignment import readAlignmentString
 from PartialGridAlignment import PartialGridAlignment
@@ -117,11 +118,11 @@ class Model(object):
     self.pef = { }
     self.pfe = { }
 
-    self.etree = stringToTree_weakRef(etree)
-    self.etree.terminals = self.etree.getPreTerminals()
+    self.etree = stringToDependencyTreeWeakRef(etree) 
+    self.etree.terminals = self.etree.setTerminals()
     if ftree is not None:
-      self.ftree = stringToTree_weakRef(ftree)
-      self.ftree.terminals = self.ftree.getPreTerminals()
+        self.ftree = stringToDependencyTreeWeakRef(ftree) 
+        self.ftree.terminals = self.ftree.setTerminals()
     else:
       self.ftree = None
 
@@ -165,7 +166,7 @@ class Model(object):
     Incorporate the following "local" features into our model.
     """
     self.featureTemplates.append(localFeatures.ff_identity)
-    self.featureTemplates.append(localFeatures.ff_hminghkm)
+    # self.featureTemplates.append(localFeatures.ff_hminghkm)
     self.featureTemplates.append(localFeatures.ff_jumpDistance)
     self.featureTemplates.append(localFeatures.ff_finalPeriodAlignedToNonPeriod)
     self.featureTemplates.append(localFeatures.ff_lexprob_zero)
@@ -190,10 +191,10 @@ class Model(object):
     Incorporate the following combination-cost features into our model.
     """
     #self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_dummy)
-    self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
+    # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_isPuncAndHasMoreThanOneLink)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_sameWordLinks)
-    self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
+    # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
 
@@ -240,27 +241,26 @@ class Model(object):
 
     # Add first-level nodes to the queue
     for terminal in self.etree.getTerminals():
-      queue.append(terminal)
-
+        queue.append(terminal)
     # Visit each node in the queue and put parent
     # in queue if not there already
     # Parent is there already if it is the last one in the queue
     while len(queue) > 0:
-      currentNode = queue.pop(0)
-
+        currentNode = queue.pop(0)
       # Put parent in the queue if it is not there already
       # We are guaranteed to have visited all of a node's children before we visit that node
-      if (currentNode.parent is not None) and (len(queue) == 0 or queue[-1] is not currentNode.parent()):
-        if abs(currentNode.parent().depth() - currentNode.depth()) == 1:
-          queue.append(currentNode.parent())
+        if (currentNode.parent is not None) and (len(queue) == 0 or queue[-1] is not currentNode.parent()):
+            if abs(currentNode.parent().depth() - currentNode.depth()) == 1:
+                queue.append(currentNode.parent())
 
       # Visit node here.
       # if currentNode.isTerminal():
       # Is current node a preterminal?
-      if len(currentNode.children[0].children) == 0:
-        self.terminal_operation(currentNode.eIndex, currentNode)
-      else:
-        self.nonterminal_operation_cube(currentNode)
+        self.nodeOperation(currentNode)
+        # if len(currentNode.children) == 0:
+        #     self.terminal_operation(currentNode)
+        # else:
+        #     self.nonterminal_operation_cube(currentNode)
 
   ################################################################################
   # nonterminal_operation_cube(self, currentNode):
@@ -677,7 +677,11 @@ class Model(object):
     box = ((minF, minE), (maxF, maxE))
     return box
 
-  def terminal_operation(self, index, currentNode = None):
+  def nodeOperation(self, currentNode = None):
+      self.terminal_operation(currentNode)
+      self.nonterminal_operation_cube(currentNode)
+      pass
+  def terminal_operation(self, currentNode = None):
     """
     Fire features at (pre)terminal nodes of the tree.
     """
@@ -695,10 +699,10 @@ class Model(object):
     tgtWordList = self.f
     srcWordList = self.e
     tgtWord = None
-    srcWord = currentNode.children[0].data
-    srcTag = currentNode.data
+    srcWord = currentNode.data["surface"]
+    srcTag = currentNode.data["pos"]
     tgtIndex = None
-    srcIndex = currentNode.children[0].eIndex
+    srcIndex = currentNode.eIndex
 
     span = (srcIndex, srcIndex)
 
@@ -711,10 +715,10 @@ class Model(object):
     # Compute feature score
 
     for k, func in enumerate(self.featureTemplates):
-      value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, [], self.diagValues, currentNode)
-      for name, value in value_dict.iteritems():
-        if value != 0:
-          scoreVector[name] += value
+        value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, [], self.diagValues, currentNode)
+        for name, value in value_dict.iteritems():
+            if value != 0:
+                scoreVector[name] += value
 
     nullPartialAlignment = PartialGridAlignment()
     nullPartialAlignment.score = score = scoreVector.dot(self.weights)
@@ -789,7 +793,7 @@ class Model(object):
       # print(alignmentList)
       newAlignmentList = []
       LIMIT_1 = max(10, self.lenF/2)
-      LIMIT_N = max(10, self.lenF/2)
+      LIMIT_N = max(10, self.lenF/i)
       # print alignmentList[0:LIMIT_N]
       for (_,na) in alignmentList[0:LIMIT_N]:# na means n link alignment
         for (_, sa) in singleBestAlignment[0:LIMIT_1]:#sa means single-link alignment
@@ -841,7 +845,6 @@ class Model(object):
             if self.COMPUTE_FEAR:
               NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
               self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
-          # print "hogege"
       alignmentList = newAlignmentList 
       # print "len(alingmentList)=",len(alignmentList)
           # print alignmentList
