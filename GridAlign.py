@@ -276,7 +276,7 @@ class Model(object):
         # just copy the contents from child up to currentNode, and move on.
         numChildren = len(currentNode.children)
         if numChildren == 0:
-          return
+            return
   
         # Compute the span of currentNode
         # span is an ordered pair [i,j] where:
@@ -333,45 +333,46 @@ class Model(object):
                                          self.NT_BEAM)
                 comb_cnt += 1
                 # Don't create and score more edges when we are already full.
-                if len(currentNode.partialAlignments) >= self.NT_BEAM:
-                  break
+                # if len(currentNode.partialAlignments) >= self.NT_BEAM:
+                if comb_cnt >= self.NT_BEAM:
+                    break
                 # - Find neighbors
                 # - Rescore neighbors
                 # - Add neighbors to the queue to be explored
                 #   o For every child, there exists a neighbor
                 #   o numNeighbors = numChildren
                 for componentNumber in xrange(numChildren):
-                  # Compute neighbor position
-                  neighborPosition = list(currentBestCombinedEdge.position)
-                  neighborPosition[componentNumber] += 1
-                  # Is this neighbor out of range?
-                  if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments):
-                    continue
+                    # Compute neighbor position
+                    neighborPosition = list(currentBestCombinedEdge.position)
+                    neighborPosition[componentNumber] += 1
+                    # Is this neighbor out of range?
+                    if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments):
+                        continue
   
-                  # Has this neighbor already been visited?
-                  #if duplicates.has_key(tuple(neighborPosition)):
-                  #    continue
-                  # Lazy eval trick due to Matthias Buechse:
-                  # Only evaluate after both a node's predecessors have been evaluated.
-                  # Special case: if any component of neighborPosition is 0, it is on the border.
-                  # In this case, it only has one predecessor (the one that led us to this position),
-                  # and can be immediately evaluated.
-                  if 0 not in neighborPosition and count[tuple(neighborPosition)] < 1:
-                    count[tuple(neighborPosition)] += 1
-                    continue
+                    # Has this neighbor already been visited?
+                    #if duplicates.has_key(tuple(neighborPosition)):
+                    #    continue
+                    # Lazy eval trick due to Matthias Buechse:
+                    # Only evaluate after both a node's predecessors have been evaluated.
+                    # Special case: if any component of neighborPosition is 0, it is on the border.
+                    # In this case, it only has one predecessor (the one that led us to this position),
+                    # and can be immediately evaluated.
+                    if 0 not in neighborPosition and count[tuple(neighborPosition)] < 1:
+                      count[tuple(neighborPosition)] += 1
+                      continue
   
-                  # Now build the neighbor edge
-                  neighbor = []
-                  for cellNumber in xrange(numChildren):
-                    cell = currentNode.children[cellNumber]
-                    edgeNumber = neighborPosition[cellNumber]
-                    edge = cell.partialAlignments[edgeNumber]
-                    neighbor.append(edge)
-                  neighborEdge, boundingBox = self.createEdge(neighbor,
-                                                              currentNode,
-                                                              span)
-                  neighborEdge.position = neighborPosition
-                  heappush(queue, (-1*neighborEdge.score, neighborEdge))
+                    # Now build the neighbor edge
+                    neighbor = []
+                    for cellNumber in xrange(numChildren):
+                      cell = currentNode.children[cellNumber]
+                      edgeNumber = neighborPosition[cellNumber]
+                      edge = cell.partialAlignments[edgeNumber]
+                      neighbor.append(edge)
+                    neighborEdge, boundingBox = self.createEdge(neighbor,
+                                                                currentNode,
+                                                                span)
+                    neighborEdge.position = neighborPosition
+                    heappush(queue, (-1*neighborEdge.score, neighborEdge))
   
             ####################################################################
             # Finalize.

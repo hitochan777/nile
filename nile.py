@@ -43,230 +43,230 @@ from DependencyParserHelper import *
 FLAGS = flags.FLAGS
 
 def readWeights(weights_file):
-  """
-  Read feature function weights from an input file.
-  This function reads a pickled svector object.
-  """
-  return cPickle.load(weights_file)
+    """
+    Read feature function weights from an input file.
+    This function reads a pickled svector object.
+    """
+    return cPickle.load(weights_file)
 
 def robustRead(filename):
-  """
-  A wrapper for more robust opening of files for reading.
-  """
-  success = False
-  filehandle = None
-  attempt_count = 0
-  while (not success) and (attempt_count < 10):
-    try:
-      attempt_count += 1
-      filehandle = open(filename, 'r')
-      success = True
-    except:
-      time.sleep(10)
-  if attempt_count >= 10:
-    LOG(FATAL, "Could not open file %s for reading. Attempted 10 times." % (filename))
-  return filehandle
+    """
+    A wrapper for more robust opening of files for reading.
+    """
+    success = False
+    filehandle = None
+    attempt_count = 0
+    while (not success) and (attempt_count < 10):
+        try:
+            attempt_count += 1
+            filehandle = open(filename, 'r')
+            success = True
+        except:
+            time.sleep(10)
+    if attempt_count >= 10:
+        LOG(FATAL, "Could not open file %s for reading. Attempted 10 times." % (filename))
+    return filehandle
 
 def robustWrite(filename):
-  """
-  A wrapper for more robust opening of files for writing.
-  """
-  success = False
-  filehandle = None
-  attempt_count = 0
-  while (not success) and (attempt_count < 10):
-    try:
-      attempt_count += 1
-      filehandle = open(filename, 'w')
-      success = True
-    except:
-      time.sleep(10)
-  if attempt_count >= 10:
-    LOG(FATAL, "Could not open file %s for writing. Attempted 10 times." % (filename))
-  return filehandle
+    """
+    A wrapper for more robust opening of files for writing.
+    """
+    success = False
+    filehandle = None
+    attempt_count = 0
+    while (not success) and (attempt_count < 10):
+        try:
+            attempt_count += 1
+            filehandle = open(filename, 'w')
+            success = True
+        except:
+            time.sleep(10)
+    if attempt_count >= 10:
+        LOG(FATAL, "Could not open file %s for writing. Attempted 10 times." % (filename))
+    return filehandle
 
 def readVocab(infile):
-  """ Read vocabulary from an input file, line by line.
-  Used later for other tasks, like data filtering. """
-  # Read floating-point numbers line by line
-  # Q: Do boolean values take up less space than integers?
-  vcb = { }
-  # Add the null token to the vocabulary
-  vcb['*NULL*'] = True
-  for line in infile:
-    word = line.strip().split()[0]
-    vcb[word] = True
-    try:
-      word_utf8 = word.decode('utf-8')
-    except:
-      continue
-  infile.close()
-  return vcb
+    """ Read vocabulary from an input file, line by line.
+    Used later for other tasks, like data filtering. """
+    # Read floating-point numbers line by line
+    # Q: Do boolean values take up less space than integers?
+    vcb = { }
+    # Add the null token to the vocabulary
+    vcb['*NULL*'] = True
+    for line in infile:
+        word = line.strip().split()[0]
+        vcb[word] = True
+        try:
+            word_utf8 = word.decode('utf-8')
+        except:
+            continue
+    infile.close()
+    return vcb
 
 def readPef(file, e_vcb, f_vcb):
-  """
-  Read a P(e|f) table in format:
-  <e>  <f>  <p(e|f)>
-  """
-  pef = defaultdict(dict)
-  for line in file:
-    (eword, fword, prob) = line.split()
-    # Filter by vocabulary
-    # Do not store tuples that we will never use
-    if e_vcb.has_key(eword) and f_vcb.has_key(fword):
-      pef[fword][eword] = float(prob)
-  file.close()
-  return pef
+    """
+    Read a P(e|f) table in format:
+    <e>  <f>  <p(e|f)>
+    """
+    pef = defaultdict(dict)
+    for line in file:
+        (eword, fword, prob) = line.split()
+        # Filter by vocabulary
+        # Do not store tuples that we will never use
+        if e_vcb.has_key(eword) and f_vcb.has_key(fword):
+            pef[fword][eword] = float(prob)
+    file.close()
+    return pef
 
 def readPfe(file, e_vcb, f_vcb):
-  """
-  Read a P(f|e) table in format:
-  <f>  <e>  <p(f|e)>
-  """
-  pfe = defaultdict(dict)
-  for line in file:
-    (fword, eword, prob) = line.split()
-    # Filter by vocabulary
-    # Do not store tuples that we will never use
-    if e_vcb.has_key(eword) and f_vcb.has_key(fword):
-      pfe[eword][fword] = float(prob)
-  file.close()
-  return pfe
+    """
+    Read a P(f|e) table in format:
+    <f>  <e>  <p(f|e)>
+    """
+    pfe = defaultdict(dict)
+    for line in file:
+        (fword, eword, prob) = line.split()
+        # Filter by vocabulary
+        # Do not store tuples that we will never use
+        if e_vcb.has_key(eword) and f_vcb.has_key(fword):
+            pfe[eword][fword] = float(prob)
+    file.close()
+    return pfe
 
 def decode_parallel(weights, indices, blob, name="", out=sys.stdout, score_out=None):
-  """
-  Align some input data in blob with a given weight vector. Report accuracy.
-  """
-  myRank = mpi.rank
-  masterRank = 0
-  # How many processors are there?
-  nProcs = mpi.size
-
-  results = [ ]
-  allResults = None
-  fmeasure = 0.0
-
-  ##########################################
-  # Keep track of time to train this epoch
-  ##########################################
-  startTime = time.time()
-  result_file = robustWrite(tmpdir+'/results.'+str(mpi.rank))
-
-  for i, instanceID in enumerate(indices[:FLAGS.subset]):
-    if myRank == i % nProcs:
-      # Assign the current instances we will look at
-      f = blob['f_instances'][instanceID]
-      e = blob['e_instances'][instanceID]
-      etree = blob['etree_instances'][instanceID]
+    """
+    Align some input data in blob with a given weight vector. Report accuracy.
+    """
+    myRank = mpi.rank
+    masterRank = 0
+    # How many processors are there?
+    nProcs = mpi.size
+  
+    results = [ ]
+    allResults = None
+    fmeasure = 0.0
+  
+    ##########################################
+    # Keep track of time to train this epoch
+    ##########################################
+    startTime = time.time()
+    result_file = robustWrite(tmpdir+'/results.'+str(mpi.rank))
+  
+    for i, instanceID in enumerate(indices[:FLAGS.subset]):
+      if myRank == i % nProcs:
+        # Assign the current instances we will look at
+        f = blob['f_instances'][instanceID]
+        e = blob['e_instances'][instanceID]
+        etree = blob['etree_instances'][instanceID]
+        if FLAGS.train:
+          gold_str = blob['gold_instances'][instanceID]
+          gold = Alignment.Alignment(gold_str)
+  
+        ftree = None
+        if FLAGS.ftrees is not None:
+          ftree = blob['ftree_instances'][instanceID]
+  
+        inverse = None
+        if FLAGS.inverse is not None:
+          inverse = blob['inverse_instances'][instanceID]
+  
+        a1 = None
+        if FLAGS.a1 is not None:
+          a1 = blob['a1_instances'][instanceID]
+  
+        a2 = None
+        if FLAGS.a2 is not None:
+          a2 = blob['a2_instances'][instanceID]
+  
+        # Prepare input data.
+        # f, e are sequences of words
+        f = f.split()
+        e = e.split()
+  
+        # Initialize model for this instance
+        model = GridAlign.Model(f, e, etree, ftree, instanceID, weights, a1, a2,
+                                inverse, DECODING=True,
+                                LOCAL_FEATURES=blob['localFeatures'],
+                                NONLOCAL_FEATURES=blob['nonlocalFeatures'],
+                                FLAGS=FLAGS)
+        if FLAGS.train:
+          model.gold = gold
+        # Initialize model with data tables
+        model.pef = blob['pef']
+        model.pfe = blob['pfe']
+        # Align the current training instance
+        # FOR PROFILING: cProfile.run('model.align(1)','profile.out')
+        model.align()
+        # Dump intermediate chunk to disk. Reassemble later.
+        if FLAGS.train:
+          cPickle.dump((model.modelBest.links, model.gold.links_dict), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
+        elif FLAGS.align:
+          # cPickle.dump(model.modelBest.links, result_file, protocol=cPickle.HIGHEST_PROTOCOL)
+          cPickle.dump((model.modelBest.links,model.modelBest.score), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
+    result_file.close()
+    done = mpi.gather(value=True, root=0)
+  
+    # REDUCE HERE
+    if myRank == masterRank:
+      # Open result files for reading
+      resultFiles = { }
+      for i in range(nProcs):
+        resultFiles[i] = open(tmpdir+'/results.'+str(i),'r')
+  
       if FLAGS.train:
-        gold_str = blob['gold_instances'][instanceID]
-        gold = Alignment.Alignment(gold_str)
-
-      ftree = None
-      if FLAGS.ftrees is not None:
-        ftree = blob['ftree_instances'][instanceID]
-
-      inverse = None
-      if FLAGS.inverse is not None:
-        inverse = blob['inverse_instances'][instanceID]
-
-      a1 = None
-      if FLAGS.a1 is not None:
-        a1 = blob['a1_instances'][instanceID]
-
-      a2 = None
-      if FLAGS.a2 is not None:
-        a2 = blob['a2_instances'][instanceID]
-
-      # Prepare input data.
-      # f, e are sequences of words
-      f = f.split()
-      e = e.split()
-
-      # Initialize model for this instance
-      model = GridAlign.Model(f, e, etree, ftree, instanceID, weights, a1, a2,
-                              inverse, DECODING=True,
-                              LOCAL_FEATURES=blob['localFeatures'],
-                              NONLOCAL_FEATURES=blob['nonlocalFeatures'],
-                              FLAGS=FLAGS)
-      if FLAGS.train:
-        model.gold = gold
-      # Initialize model with data tables
-      model.pef = blob['pef']
-      model.pfe = blob['pfe']
-      # Align the current training instance
-      # FOR PROFILING: cProfile.run('model.align(1)','profile.out')
-      model.align()
-      # Dump intermediate chunk to disk. Reassemble later.
-      if FLAGS.train:
-        cPickle.dump((model.modelBest.links, model.gold.links_dict), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
-      elif FLAGS.align:
-        # cPickle.dump(model.modelBest.links, result_file, protocol=cPickle.HIGHEST_PROTOCOL)
-        cPickle.dump((model.modelBest.links,model.modelBest.score), result_file, protocol=cPickle.HIGHEST_PROTOCOL)
-  result_file.close()
-  done = mpi.gather(value=True, root=0)
-
-  # REDUCE HERE
-  if myRank == masterRank:
-    # Open result files for reading
-    resultFiles = { }
-    for i in range(nProcs):
-      resultFiles[i] = open(tmpdir+'/results.'+str(i),'r')
-
-    if FLAGS.train:
-      ##########################################################################
-      # Compute f-measure over all alignments
-      ##########################################################################
-      numCorrect = 0
-      numModelLinks = 0
-      numGoldLinks = 0
-
-      for i, instanceID in enumerate(indices[:FLAGS.subset]):
-        # What node stored instance i
-        node = i % nProcs
-        # Retrieve result from instance i
-        resultTuple = cPickle.load(resultFiles[node])
-        modelBest = resultTuple[0]
-        gold = resultTuple[1]
-        # Update F-score counts
-        numCorrect_, numModelLinks_, numGoldLinks_ = f1accumulator(modelBest,
-                                                                   gold)
-        numCorrect += numCorrect_
-        numModelLinks += numModelLinks_
-        numGoldLinks += numGoldLinks_
-      # Compute F-measure, Precision, and Recall
-      fmeasure, precision, recall = f1score(numCorrect,
-                                            numModelLinks,
-                                            numGoldLinks)
-      elapsedTime = time.time() - startTime
-
-      ######################################################################
-      # Print report for this iteration
-      ######################################################################
-      sys.stderr.write("Time: "+str(elapsedTime)+"\n")
-      sys.stderr.write("\n")
-      sys.stderr.write('F-score-%s: %1.5f\n' % (name, fmeasure))
-      sys.stderr.write('Precision-%s: %1.5f\n' % (name, precision))
-      sys.stderr.write('Recall-%s: %1.5f\n' % (name, recall))
-      sys.stderr.write('# Correct: %d\n' % (numCorrect))
-      sys.stderr.write('# Me Total: %d\n' % (numModelLinks))
-      sys.stderr.write('# Gold Total: %d\n' % (numGoldLinks))
-      sys.stderr.write("[%d] Finished decoding.\n" %(myRank))
-    else:
-      if score_out!=None:
-        sout = open(score_out,"w")
-      for i, instanceID in enumerate(indices):
-        node = i % nProcs
-        resultTuple = cPickle.load(resultFiles[node])
-        modelBestLinks = resultTuple[0]
-        score = resultTuple[1]
-        out.write("%s\n" %(" ".join(map(lambda link: "%s-%s" %(link[0], link[1]), modelBestLinks))))
-        if(score_out!=None):
-            sout.write("%s\n" % (score))
-    # CLEAN UP
-    for i in range(nProcs):
-      resultFiles[i].close()
-  return
+        ##########################################################################
+        # Compute f-measure over all alignments
+        ##########################################################################
+        numCorrect = 0
+        numModelLinks = 0
+        numGoldLinks = 0
+  
+        for i, instanceID in enumerate(indices[:FLAGS.subset]):
+          # What node stored instance i
+          node = i % nProcs
+          # Retrieve result from instance i
+          resultTuple = cPickle.load(resultFiles[node])
+          modelBest = resultTuple[0]
+          gold = resultTuple[1]
+          # Update F-score counts
+          numCorrect_, numModelLinks_, numGoldLinks_ = f1accumulator(modelBest,
+                                                                     gold)
+          numCorrect += numCorrect_
+          numModelLinks += numModelLinks_
+          numGoldLinks += numGoldLinks_
+        # Compute F-measure, Precision, and Recall
+        fmeasure, precision, recall = f1score(numCorrect,
+                                              numModelLinks,
+                                              numGoldLinks)
+        elapsedTime = time.time() - startTime
+  
+        ######################################################################
+        # Print report for this iteration
+        ######################################################################
+        sys.stderr.write("Time: "+str(elapsedTime)+"\n")
+        sys.stderr.write("\n")
+        sys.stderr.write('F-score-%s: %1.5f\n' % (name, fmeasure))
+        sys.stderr.write('Precision-%s: %1.5f\n' % (name, precision))
+        sys.stderr.write('Recall-%s: %1.5f\n' % (name, recall))
+        sys.stderr.write('# Correct: %d\n' % (numCorrect))
+        sys.stderr.write('# Me Total: %d\n' % (numModelLinks))
+        sys.stderr.write('# Gold Total: %d\n' % (numGoldLinks))
+        sys.stderr.write("[%d] Finished decoding.\n" %(myRank))
+      else:
+        if score_out!=None:
+          sout = open(score_out,"w")
+        for i, instanceID in enumerate(indices):
+          node = i % nProcs
+          resultTuple = cPickle.load(resultFiles[node])
+          modelBestLinks = resultTuple[0]
+          score = resultTuple[1]
+          out.write("%s\n" %(" ".join(map(lambda link: "%s-%s" %(link[0], link[1]), modelBestLinks))))
+          if(score_out!=None):
+              sout.write("%s\n" % (score))
+      # CLEAN UP
+      for i in range(nProcs):
+        resultFiles[i].close()
+    return
 
 def perceptron_parallel(epoch, indices, blob, weights = None, valid_feature_names = None):
   """
@@ -375,37 +375,37 @@ def perceptron_parallel(epoch, indices, blob, weights = None, valid_feature_name
 
       # Debiasing
       if FLAGS.debiasing:
-        validate_features(oracle.scoreVector, valid_feature_names)
-        validate_features(hyp.scoreVector, valid_feature_names)
+          validate_features(oracle.scoreVector, valid_feature_names)
+          validate_features(hyp.scoreVector, valid_feature_names)
 
       deltas = None
       if set(hyp.links) != set(oracle.links):
-        numChanged += 1
-        ###############################################################
-        # WEIGHT UPDATES
-        ################################################################
-        deltas = oracle.scoreVector - hyp.scoreVector
-        weights = weights + LEARNING_RATE*deltas
+          numChanged += 1
+          ###############################################################
+          # WEIGHT UPDATES
+          ################################################################
+          deltas = oracle.scoreVector - hyp.scoreVector
+          weights = weights + LEARNING_RATE*deltas
       # Even if we didnt update, the current weight vector should count towards the sum!
       weights_sum += weights
       # L1 Projection step
       # if w in [-tau, tau], w -> 0
       # else, move w closer to 0 by tau.
       if FLAGS.tau is not None:
-        for index, w in weights_sum.iteritems():
-          if w == 0:
-            del weights_sum[index]
-            continue
-          if index[-3:] == '_nb':
-            continue
-          if w > 0 and w <= FLAGS.tau and not FLAGS.negreg:
-            del weights_sum[index]
-          elif w < 0 and w >= (FLAGS.tau * -1):
-            del weights_sum[index]
-          elif w > 0 and w > FLAGS.tau and not FLAGS.negreg:
-            weights_sum[index] -= FLAGS.tau
-          elif w < 0 and w < (FLAGS.tau * -1):
-            weights_sum[index] += FLAGS.tau
+          for index, w in weights_sum.iteritems():
+              if w == 0:
+                  del weights_sum[index]
+                  continue
+              if index[-3:] == '_nb':
+                  continue
+              if w > 0 and w <= FLAGS.tau and not FLAGS.negreg:
+                  del weights_sum[index]
+              elif w < 0 and w >= (FLAGS.tau * -1):
+                  del weights_sum[index]
+              elif w > 0 and w > FLAGS.tau and not FLAGS.negreg:
+                  weights_sum[index] -= FLAGS.tau
+              elif w < 0 and w < (FLAGS.tau * -1):
+                  weights_sum[index] += FLAGS.tau
 
   # Set uniq pickled output file for this process
   # Holds sum of weights over each iteration for this process
