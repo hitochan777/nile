@@ -5,6 +5,8 @@
 
 # python files
 !Alignment.py
+!DependencyParserHelper.py
+!DependencyTreeNode.py
 !Features.py
 !Fmeasure.py
 !GridAlign.py
