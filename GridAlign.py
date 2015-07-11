@@ -190,13 +190,13 @@ class Model(object):
       """
       Incorporate the following combination-cost features into our model.
       """
-      #self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_dummy)
+      # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_dummy)
       # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
       self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_isPuncAndHasMoreThanOneLink)
       self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_sameWordLinks)
-      # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
-      self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
-      self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
+      # # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
+      # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
+      # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
   
     def align(self):
       """
@@ -238,7 +238,7 @@ class Model(object):
         self.etree.partialAlignments.append(empty)
         self.etree.oracle = PartialGridAlignment()
         return
-  
+      # print self.etree 
       # Add first-level nodes to the queue
       for terminal in self.etree.getTerminals():
           queue.append(terminal)
@@ -256,11 +256,14 @@ class Model(object):
         # Visit node here.
         # if currentNode.isTerminal():
         # Is current node a preterminal?
-          self.nodeOperation(currentNode)
-          # if len(currentNode.children) == 0:
-          #     self.terminal_operation(currentNode)
-          # else:
-          #     self.nonterminal_operation_cube(currentNode)
+          # self.nodeOperation(currentNode)
+          self.terminal_operation(currentNode)
+          if len(currentNode.children) > 0:
+              self.nonterminal_operation_cube(currentNode)
+          # if(currentNode.parent==None):
+          #     print "*"*20
+          #     for al in currentNode.partialAlignments[:10]:
+          #         print(al)
   
     ################################################################################
     # nonterminal_operation_cube(self, currentNode):
@@ -285,6 +288,8 @@ class Model(object):
   
         span = (currentNode.span_start(), currentNode.span_end())
         currentNode.span = span
+        # if currentNode.parent == None:
+            # print("span=",span)
   
         ########################################################################
         # 1-BEST SEARCH
@@ -293,6 +298,8 @@ class Model(object):
             # Initialize
             queue = []
             heapify(queue)
+            oneColumnAlignments = currentNode.partialAlignments # creates kind of dummy terminal for nonterminal node
+            currentNode.partialAlignments = []
             # Before we push, check to see if object's position is in duplicates
             # i.e., we have already visited that position and added the resultant object to the queue
             count = defaultdict(int)
@@ -311,7 +318,7 @@ class Model(object):
                 currentChild = currentNode.children[c]
                 edge = currentChild.partialAlignments[edgeNumber]
                 edges.append(edge)
-            edges.append(currentNode.partialAlignments[position[-1]])
+            edges.append(oneColumnAlignments[position[-1]])
             newEdge, boundingBox = self.createEdge(edges, currentNode, span)
   
             # Where did this new edge come from?
@@ -321,34 +328,34 @@ class Model(object):
   
             # Keep filling up my cell until self.BEAM_SIZE has been reached *or*
             # we have exhausted all possible items in the queue
-            # while(len(queue) > 0 and len(currentNode.partialAlignments) < self.NT_BEAM):
-            comb_cnt = 0 # how many times combination occurred
-            while(len(queue) > 0 and comb_cnt < self.NT_BEAM):
+            while(len(queue) > 0 and len(currentNode.partialAlignments) < self.NT_BEAM):
+            # comb_cnt = 0 # how many times combination occurred
+            # while(len(queue) > 0 and comb_cnt < self.NT_BEAM):
                 # Find current best
                 (_, currentBestCombinedEdge) = heappop(queue)
                 # Add to my cell
-                # print "combine" 
-                self.addPartialAlignment(currentNode.partialAlignments,
-                                         currentBestCombinedEdge,
-                                         self.NT_BEAM)
-                comb_cnt += 1
+                self.addPartialAlignment(currentNode.partialAlignments, currentBestCombinedEdge, self.NT_BEAM)
+                # comb_cnt += 1
                 # Don't create and score more edges when we are already full.
-                # if len(currentNode.partialAlignments) >= self.NT_BEAM:
-                if comb_cnt >= self.NT_BEAM:
+                if len(currentNode.partialAlignments) >= self.NT_BEAM:
+                # if comb_cnt >= self.NT_BEAM:
                     break
                 # - Find neighbors
                 # - Rescore neighbors
                 # - Add neighbors to the queue to be explored
                 #   o For every child, there exists a neighbor
                 #   o numNeighbors = numChildren
-                for componentNumber in xrange(numChildren):
+                for componentNumber in xrange(numChildren+1):
                     # Compute neighbor position
                     neighborPosition = list(currentBestCombinedEdge.position)
                     neighborPosition[componentNumber] += 1
                     # Is this neighbor out of range?
-                    if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments):
-                        continue
-  
+                    if componentNumber == numChildren:
+                        if neighborPosition[componentNumber] >= len(oneColumnAlignments):
+                            continue
+                    else:
+                        if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments):
+                            continue
                     # Has this neighbor already been visited?
                     #if duplicates.has_key(tuple(neighborPosition)):
                     #    continue
@@ -357,20 +364,20 @@ class Model(object):
                     # Special case: if any component of neighborPosition is 0, it is on the border.
                     # In this case, it only has one predecessor (the one that led us to this position),
                     # and can be immediately evaluated.
-                    if 0 not in neighborPosition and count[tuple(neighborPosition)] < 1:
-                      count[tuple(neighborPosition)] += 1
-                      continue
+                    # if 0 not in neighborPosition and count[tuple(neighborPosition)] < 1: # this only works when number of children is 2, I think
+                    if count[tuple(neighborPosition)] < numChildren - neighborPosition.count(0): # numChildren + 1 - neighborPosition.count(0) - 1
+                        count[tuple(neighborPosition)] += 1
+                        continue
   
                     # Now build the neighbor edge
                     neighbor = []
                     for cellNumber in xrange(numChildren):
-                      cell = currentNode.children[cellNumber]
-                      edgeNumber = neighborPosition[cellNumber]
-                      edge = cell.partialAlignments[edgeNumber]
-                      neighbor.append(edge)
-                    neighborEdge, boundingBox = self.createEdge(neighbor,
-                                                                currentNode,
-                                                                span)
+                        cell = currentNode.children[cellNumber]
+                        edgeNumber = neighborPosition[cellNumber]
+                        edge = cell.partialAlignments[edgeNumber]
+                        neighbor.append(edge)
+                    neighbor.append(oneColumnAlignments[neighborPosition[-1]])
+                    neighborEdge, boundingBox = self.createEdge(neighbor, currentNode, span)
                     neighborEdge.position = neighborPosition
                     heappush(queue, (-1*neighborEdge.score, neighborEdge))
   
@@ -380,8 +387,12 @@ class Model(object):
             # Sort model score list.
             sortedItems = []
             while(len(currentNode.partialAlignments) > 0):
-              sortedItems.insert(0, heappop(currentNode.partialAlignments))
+                sortedItems.insert(0, heappop(currentNode.partialAlignments))
             currentNode.partialAlignments = sortedItems
+            if(currentNode.parent==None):
+                print "*"*10, currentNode.data["dep_id"], "*"*10
+                for al in sortedItems[:10]:
+                    print(al)
   
     	   ## --- end 1best computation --- ##
   
@@ -389,9 +400,8 @@ class Model(object):
           # Oracle BEFORE beam is applied.
           # Should just copy oracle up from terminal nodes.
           oracleChildEdges = [c.oracle for c in currentNode.children]
-          oracleAlignment, boundingBox = self.createEdge(oracleChildEdges,
-                                                         currentNode,
-                                                         span)
+          oracleChildEdges.append(currentNode.oracle)
+          oracleAlignment, boundingBox = self.createEdge(oracleChildEdges, currentNode, span)
   
           # Oracle AFTER beam is applied.
           #oracleCandidates = list(currentNode.partialAlignments)
@@ -403,172 +413,179 @@ class Model(object):
         # HOPE SEARCH
         ########################################################################
         if self.COMPUTE_HOPE:
-          # Initialize
-          queue_hope = []
-          heapify(queue_hope)
-          # Before we push, check to see if object's position is in duplicates
-          # i.e., we have already visited that position and added the resultant
-          # object to the queue
-          count_hope = defaultdict(int)
-          position = [0]*len(currentNode.children)
+            # Initialize
+            queue_hope = []
+            heapify(queue_hope)
+            oneColumnAlignments = currentNode.partialAlignments_hope # creates kind of dummy terminal for nonterminal node
+            currentNode.partialAlignments_hope = []
+            # Before we push, check to see if object's position is in duplicates
+            # i.e., we have already visited that position and added the resultant
+            # object to the queue
+            count_hope = defaultdict(int)
+            position = [0]*len(currentNode.children+1)
   
-          # Create structure of first object in position [0,0,0,...,0]
-          # This path implies a resultant structure that is the best structure
-          # we know of before combination costs (rescoring).
-          edges = [ ]
-          for c in xrange(numChildren):
-            # Object number for current child
-            edgeNumber = position[c]
-            currentChild = currentNode.children[c]
-            edge = currentChild.partialAlignments_hope[edgeNumber]
-            edges.append(edge)
-          newEdge, boundingBox = self.createEdge(edges, currentNode, span)
-          newEdge.hope = newEdge.score + newEdge.fscore
+            # Create structure of first object in position [0,0,0,...,0]
+            # This path implies a resultant structure that is the best structure
+            # we know of before combination costs (rescoring).
+            edges = [ ]
+            for c in xrange(numChildren):
+                # Object number for current child
+                edgeNumber = position[c]
+                currentChild = currentNode.children[c]
+                edge = currentChild.partialAlignments_hope[edgeNumber]
+                edges.append(edge)
+            edges.append(oneColumnAlignments[position[-1]])
+            newEdge, boundingBox = self.createEdge(edges, currentNode, span)
+            newEdge.hope = newEdge.score + newEdge.fscore
   
-          # Where did this new edge come from?
-          newEdge.position = list(position)
-          # Add new edge to the queue/buffer
-          heappush(queue_hope, (newEdge.hope*-1, newEdge))
+            # Where did this new edge come from?
+            newEdge.position = list(position)
+            # Add new edge to the queue/buffer
+            heappush(queue_hope, (newEdge.hope*-1, newEdge))
   
-          while(len(queue_hope) > 0 and len(currentNode.partialAlignments_hope) < self.NT_BEAM):
-            # Find current best; add to my cell
-            (_, currentBestCombinedEdge_hope) = heappop(queue_hope)
-            self.addPartialAlignment_hope(currentNode.partialAlignments_hope,
-                                          currentBestCombinedEdge_hope,
-                                          self.NT_BEAM)
-            # Don't create and score more edges when we are already full.
-            if len(currentNode.partialAlignments_hope) >= self.NT_BEAM:
-                break
-            # - Find neighbors
-            # - Rescore neighbors
-            # - Add neighbors to the queue to be explored
-            #   o For every child, there exists a neighbor
-            #   o numNeighbors = numChildren
-            for componentNumber in xrange(numChildren):
-              # Compute neighbor position
-              neighborPosition = list(currentBestCombinedEdge_hope.position)
-              neighborPosition[componentNumber] += 1
-              # Is this neighbor out of range?
-              if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments_hope):
-                continue
+            while(len(queue_hope) > 0 and len(currentNode.partialAlignments_hope) < self.NT_BEAM):
+              # Find current best; add to my cell
+              (_, currentBestCombinedEdge_hope) = heappop(queue_hope)
+              self.addPartialAlignment_hope(currentNode.partialAlignments_hope, currentBestCombinedEdge_hope, self.NT_BEAM)
+              # Don't create and score more edges when we are already full.
+              if len(currentNode.partialAlignments_hope) >= self.NT_BEAM:
+                  break
+              # - Find neighbors
+              # - Rescore neighbors
+              # - Add neighbors to the queue to be explored
+              #   o For every child, there exists a neighbor
+              #   o numNeighbors = numChildren
+              for componentNumber in xrange(numChildren+1):
+                # Compute neighbor position
+                neighborPosition = list(currentBestCombinedEdge_hope.position)
+                neighborPosition[componentNumber] += 1
+                # Is this neighbor out of range?
+                if componentNumber == numChildren:
+                    if neighborPosition[componentNumber] >= len(oneColumnAlignments):
+                        continue
+                else:
+                    if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments_hope):
+                        continue
   
-              # Has this neighbor already been visited?
-              #if duplicates_hope.has_key(tuple(neighborPosition)):
-              #    continue
-              # Lazy eval trick due to Matthias Buechse:
-              # Only evaluate after both a node's predecessors have been evaluated.
-              # Special case: if any component of neighborPosition is 0, it is on the border.
-              # In this case, it only has one predecessor (the one that led us to this position),
-              # and can be immediately evaluated.
-              if 0 not in neighborPosition and count_hope[tuple(neighborPosition)] < 1:
-                count_hope[tuple(neighborPosition)] += 1
-                continue
+                # Has this neighbor already been visited?
+                #if duplicates_hope.has_key(tuple(neighborPosition)):
+                #    continue
+                # Lazy eval trick due to Matthias Buechse:
+                # Only evaluate after both a node's predecessors have been evaluated.
+                # Special case: if any component of neighborPosition is 0, it is on the border.
+                # In this case, it only has one predecessor (the one that led us to this position),
+                # and can be immediately evaluated.
+                if count_hope[tuple(neighborPosition)] < numChildren - neighborPosition.count(0):
+                    count_hope[tuple(neighborPosition)] += 1
+                    continue
   
-              # Now build the neighbor edge
-              neighbor = []
-              for cellNumber in xrange(numChildren):
-                cell = currentNode.children[cellNumber]
-                edgeNumber = neighborPosition[cellNumber]
-                edge = cell.partialAlignments_hope[edgeNumber]
-                neighbor.append(edge)
-              neighborEdge, boundingBox = self.createEdge(neighbor,
-                                                          currentNode,
-                                                          span)
+                # Now build the neighbor edge
+                neighbor = []
+                for cellNumber in xrange(numChildren):
+                    cell = currentNode.children[cellNumber]
+                    edgeNumber = neighborPosition[cellNumber]
+                    edge = cell.partialAlignments_hope[edgeNumber]
+                    neighbor.append(edge)
+                neighbor.append(oneColumnAlignments[neighborPosition[-1]])
+                neighborEdge, boundingBox = self.createEdge(neighbor, currentNode, span)
+                neighborEdge.position = neighborPosition
+                neighborEdge.hope = neighborEdge.fscore + neighborEdge.score
+                heappush(queue_hope, (neighborEdge.hope*-1, neighborEdge))
   
-              neighborEdge.position = neighborPosition
-              neighborEdge.hope = neighborEdge.fscore + neighborEdge.score
-              heappush(queue_hope, (neighborEdge.hope*-1, neighborEdge))
-  
-          sortedItems_hope = []
-          while(len(currentNode.partialAlignments_hope) > 0):
-            (_, obj) = heappop(currentNode.partialAlignments_hope)
-            sortedItems_hope.insert(0, obj)
-          currentNode.partialAlignments_hope = sortedItems_hope
+            sortedItems_hope = []
+            while(len(currentNode.partialAlignments_hope) > 0):
+                (_, obj) = heappop(currentNode.partialAlignments_hope)
+                sortedItems_hope.insert(0, obj)
+            currentNode.partialAlignments_hope = sortedItems_hope
   
         ########################################################################
         # FEAR SEARCH
         ########################################################################
         if self.COMPUTE_FEAR:
-          # Initialize
-          queue_fear = []
-          heapify(queue_fear)
-          # Before we push, check to see if object's position is in duplicates
-          # i.e., we have already visited that position and added the resultant
-          # object to the queue
-          count_fear = defaultdict(int)
-          position = [0]*len(currentNode.children)
+            # Initialize
+            queue_fear = []
+            heapify(queue_fear)
+            oneColumnAlignments = currentNode.partialAlignments_fear # creates kind of dummy terminal for nonterminal node
+            currentNode.partialAlignments_fear = []
+            # Before we push, check to see if object's position is in duplicates
+            # i.e., we have already visited that position and added the resultant
+            # object to the queue
+            count_fear = defaultdict(int)
+            position = [0]*len(currentNode.children+1)
   
-          # Create structure of first object in position [0,0,0,...,0]
-          # This path implies a resultant structure that is the best structure
-          # we know of before combination costs (rescoring).
-          edges = [ ]
-          for c in xrange(numChildren):
-            # Object number for current child
-            edgeNumber = position[c]
-            currentChild = currentNode.children[c]
-            edge = currentChild.partialAlignments_fear[edgeNumber]
-            edges.append(edge)
-          newEdge, boundingBox = self.createEdge(edges, currentNode, span)
-          newEdge.fear = (1 - newEdge.fscore) + newEdge.score
+            # Create structure of first object in position [0,0,0,...,0]
+            # This path implies a resultant structure that is the best structure
+            # we know of before combination costs (rescoring).
+            edges = [ ]
+            for c in xrange(numChildren):
+                # Object number for current child
+                edgeNumber = position[c]
+                currentChild = currentNode.children[c]
+                edge = currentChild.partialAlignments_fear[edgeNumber]
+                edges.append(edge)
+            edges.append(oneColumnAlignments[position[-1]])
+            newEdge, boundingBox = self.createEdge(edges, currentNode, span)
+            newEdge.fear = (1 - newEdge.fscore) + newEdge.score
   
-          # Where did this new edge come from?
-          newEdge.position = list(position)
-          # Add new edge to the queue/buffer
-          heappush(queue_fear, (newEdge.fear*-1, newEdge))
+            # Where did this new edge come from?
+            newEdge.position = list(position)
+            # Add new edge to the queue/buffer
+            heappush(queue_fear, (newEdge.fear*-1, newEdge))
   
-          while(len(queue_fear) > 0 and len(currentNode.partialAlignments_fear) < self.NT_BEAM):
-            # Find current best; add to my cell
-            (_, currentBestCombinedEdge_fear) = heappop(queue_fear)
-            self.addPartialAlignment_fear(currentNode.partialAlignments_fear,
-                                          currentBestCombinedEdge_fear,
-                                          self.NT_BEAM)
-            # Don't create and score more edges when we are already full.
-            if len(currentNode.partialAlignments_fear) >= self.NT_BEAM:
-              break
-            # - Find neighbors
-            # - Rescore neighbors
-            # - Add neighbors to the queue to be explored
-            #   o For every child, there exists a neighbor
-            #   o numNeighbors = numChildren
-            for componentNumber in xrange(numChildren):
-              # Compute neighbor position
-              neighborPosition = list(currentBestCombinedEdge_fear.position)
-              neighborPosition[componentNumber] += 1
-              # Is this neighbor out of range?
-              if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments_fear):
-                continue
-              # Has this neighbor already been visited?
-              #if duplicates_fear.has_key(tuple(neighborPosition)):
-              #    continue
-              # Lazy eval trick due to Matthias Buechse:
-              # Only evaluate after both a node's predecessors have been evaluated.
-              # Special case: if any component of neighborPosition is 0, it is on the border.
-              # In this case, it only has one predecessor (the one that led us to this position),
-              # and can be immediately evaluated.
-              if 0 not in neighborPosition and count_fear[tuple(neighborPosition)] < 1:
-                count_fear[tuple(neighborPosition)] += 1
-                continue
+            while(len(queue_fear) > 0 and len(currentNode.partialAlignments_fear) < self.NT_BEAM):
+                # Find current best; add to my cell
+                (_, currentBestCombinedEdge_fear) = heappop(queue_fear)
+                self.addPartialAlignment_fear(currentNode.partialAlignments_fear, currentBestCombinedEdge_fear, self.NT_BEAM)
+                # Don't create and score more edges when we are already full.
+                if len(currentNode.partialAlignments_fear) >= self.NT_BEAM:
+                    break
+                # - Find neighbors
+                # - Rescore neighbors
+                # - Add neighbors to the queue to be explored
+                #   o For every child, there exists a neighbor
+                #   o numNeighbors = numChildren
+                for componentNumber in xrange(numChildren+1):
+                    # Compute neighbor position
+                    neighborPosition = list(currentBestCombinedEdge_fear.position)
+                    neighborPosition[componentNumber] += 1
+                    # Is this neighbor out of range?
+                    if componentNumber == numChildren:
+                        if neighborPosition[componentNumber] >= len(oneColumnAlignments):
+                            continue
+                    else:
+                        if neighborPosition[componentNumber] >= len(currentNode.children[componentNumber].partialAlignments_fear):
+                            continue
+                    # Has this neighbor already been visited?
+                    #if duplicates_fear.has_key(tuple(neighborPosition)):
+                    #    continue
+                    # Lazy eval trick due to Matthias Buechse:
+                    # Only evaluate after both a node's predecessors have been evaluated.
+                    # Special case: if any component of neighborPosition is 0, it is on the border.
+                    # In this case, it only has one predecessor (the one that led us to this position),
+                    # and can be immediately evaluated.
+                    if count_fear[tuple(neighborPosition)] < numChildren - neighborPosition.count(0):
+                        count_fear[tuple(neighborPosition)] += 1
+                        continue
   
-              # Now build the neighbor edge
-              neighbor = []
-              for cellNumber in xrange(numChildren):
-                cell = currentNode.children[cellNumber]
-                edgeNumber = neighborPosition[cellNumber]
-                edge = cell.partialAlignments_fear[edgeNumber]
-                neighbor.append(edge)
-              neighborEdge, boundingBox = self.createEdge(neighbor,
-                                                          currentNode,
-                                                          span)
-              neighborEdge.position = neighborPosition
-              neighborEdge.fear = (1 - neighborEdge.fscore) + neighborEdge.score
-              heappush(queue_fear, (neighborEdge.fear*-1, neighborEdge))
+                    # Now build the neighbor edge
+                    neighbor = []
+                    for cellNumber in xrange(numChildren):
+                        cell = currentNode.children[cellNumber]
+                        edgeNumber = neighborPosition[cellNumber]
+                        edge = cell.partialAlignments_fear[edgeNumber]
+                        neighbor.append(edge)
+                    neighbor.append(oneColumnAlignments[neighborPosition[-1]])
+                    neighborEdge, boundingBox = self.createEdge(neighbor, currentNode, span)
+                    neighborEdge.position = neighborPosition
+                    neighborEdge.fear = (1 - neighborEdge.fscore) + neighborEdge.score
+                    heappush(queue_fear, (neighborEdge.fear*-1, neighborEdge))
   
-          # FINALIZE
-          sortedItems_fear = []
-          while(len(currentNode.partialAlignments_fear) > 0):
-            (_, obj) = heappop(currentNode.partialAlignments_fear)
-            sortedItems_fear.insert(0, obj)
-          currentNode.partialAlignments_fear = sortedItems_fear
+            # FINALIZE
+            sortedItems_fear = []
+            while(len(currentNode.partialAlignments_fear) > 0):
+                (_, obj) = heappop(currentNode.partialAlignments_fear)
+                sortedItems_fear.insert(0, obj)
+            currentNode.partialAlignments_fear = sortedItems_fear
   
     def createEdge(self, childEdges, currentNode, span):
       """
@@ -609,7 +626,7 @@ class Model(object):
       """
   
       if self.COMPUTE_ORACLE:
-        edge.fscore = self.ff_fscore(edge, srcSpan) # Is this bug, since if "COMPUTE_ORACLE" is true, fscore is not needed.
+          edge.fscore = self.ff_fscore(edge, srcSpan)
   
       boundingBox = None
       if self.DO_RESCORE:
@@ -678,7 +695,7 @@ class Model(object):
     def nodeOperation(self, currentNode = None):
         self.terminal_operation(currentNode)
         self.nonterminal_operation_cube(currentNode)
-        pass
+
     def terminal_operation(self, currentNode = None):
       """
       Fire features at (pre)terminal nodes of the tree.
@@ -722,20 +739,18 @@ class Model(object):
       nullPartialAlignment.score = score = scoreVector.dot(self.weights)
       nullPartialAlignment.scoreVector = scoreVector
       nullPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
-      # print "null" 
       self.addPartialAlignment(partialAlignments, nullPartialAlignment, self.BEAM_SIZE)
   
       if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
-        nullPartialAlignment.fscore = self.ff_fscore(nullPartialAlignment, span)
-  
-        if self.COMPUTE_ORACLE:
-          oracleAlignment = nullPartialAlignment
-        if self.COMPUTE_HOPE:
-          nullPartialAlignment.hope = nullPartialAlignment.fscore + nullPartialAlignment.score
-          self.addPartialAlignment_hope(partialAlignments_hope, nullPartialAlignment, self.BEAM_SIZE)
-        if self.COMPUTE_FEAR:
-          nullPartialAlignment.fear = (1 - nullPartialAlignment.fscore) + nullPartialAlignment.score
-          self.addPartialAlignment_fear(partialAlignments_fear, nullPartialAlignment, self.BEAM_SIZE)
+          nullPartialAlignment.fscore = self.ff_fscore(nullPartialAlignment, span)
+          if self.COMPUTE_ORACLE:
+              oracleAlignment = nullPartialAlignment
+          if self.COMPUTE_HOPE:
+              nullPartialAlignment.hope = nullPartialAlignment.fscore + nullPartialAlignment.score
+              self.addPartialAlignment_hope(partialAlignments_hope, nullPartialAlignment, self.BEAM_SIZE)
+          if self.COMPUTE_FEAR:
+              nullPartialAlignment.fear = (1 - nullPartialAlignment.fscore) + nullPartialAlignment.score
+              self.addPartialAlignment_fear(partialAlignments_fear, nullPartialAlignment, self.BEAM_SIZE)
   
       ##################################################
       # Single-link alignment
@@ -762,7 +777,6 @@ class Model(object):
         singleLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
         singleLinkPartialAlignment.links = currentLinks
   
-        # print "single"
         self.addPartialAlignment(partialAlignments, singleLinkPartialAlignment, self.BEAM_SIZE)
   
         if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
@@ -786,14 +800,11 @@ class Model(object):
       ##################################################
       # Get ready for N-link alignments(N>=2)
       for i in xrange(2,self.nto1+1): 
-        # print str(i)+"-1 link"
         # Sort the fwords by score
         alignmentList.sort(reverse=True)
-        # print(alignmentList)
         newAlignmentList = []
         LIMIT_1 = max(10, self.lenF/2)
         LIMIT_N = max(10, self.lenF/i)
-        # print alignmentList[0:LIMIT_N]
         for (_,na) in alignmentList[0:LIMIT_N]:# na means n link alignment
           for (_, sa) in singleBestAlignment[0:LIMIT_1]:#sa means single-link alignment
             if(na[-1]>=sa[0]):#sa actually always have only one element
@@ -809,7 +820,6 @@ class Model(object):
                 continue
   
             currentLinks = list(map(lambda x: (x,srcIndex),na+sa))
-            # print currentLinks
               
             scoreVector = svector.Vector()
             for k, func in enumerate(self.featureTemplates):
@@ -828,7 +838,6 @@ class Model(object):
             NLinkPartialAlignment.scoreVector = scoreVector
             NLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
             NLinkPartialAlignment.links = currentLinks
-            # print "two-link" 
             self.addPartialAlignment(partialAlignments, NLinkPartialAlignment, self.BEAM_SIZE)
             if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
               NLinkPartialAlignment.fscore = self.ff_fscore(NLinkPartialAlignment, span)
@@ -845,9 +854,6 @@ class Model(object):
                 NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
                 self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
         alignmentList = newAlignmentList 
-        # print "len(alingmentList)=",len(alignmentList)
-            # print alignmentList
-            # alignmentList = newAlignmentList 
   
       ########################################################################
       # Finalize. Sort model-score list and then hope list.
@@ -897,13 +903,8 @@ class Model(object):
   
         if len(list) < BEAM_SIZE:
             heappush(list, partialAlignment)
-            # print "push"
         elif partialAlignment > list[0]:
-            # print "pushpop"
             heappushpop(list, partialAlignment)
-        else:
-            pass
-            # print "not added"
   
     ############################################################################
     # addPartialAlignment(self, list, partialAlignment):

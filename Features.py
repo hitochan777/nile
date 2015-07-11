@@ -5,7 +5,7 @@
 #########################################################
 
 from collections import defaultdict
-from NLPTreeHelper import containsSpan
+from DependencyParserHelper import containsSpan
 import sys
 import hminghkm as minghkm
 from pyglog import *

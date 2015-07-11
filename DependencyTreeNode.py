@@ -4,8 +4,13 @@
 import sys
 import weakref
 from TerminalNode import TerminalNode
+from NLPTree import NLPTree
+from Tree import Tree
 
-class DependencyTreeNode(TerminalNode):
+class DependencyTreeNode(NLPTree):
+    def __init__(self, data = None, children = None):
+        self.setup(data,children)
+
     def setup(self, data, children = None):
         self.partialAlignments = []
         self.partialAlignments_hope = []
@@ -20,8 +25,14 @@ class DependencyTreeNode(TerminalNode):
             child.order = ci
         self.terminals = [ ]
         self.eIndex = -1
+        self.hope = None
         self.oracle = None
-
+        self.fear = None
+        self.i = -1
+        self.j = -1
+        self.order = 0
+        self.span = None
+	
     def setTerminals(self):
         if len(self.children) > 0:
             for child in self.children:
@@ -43,7 +54,7 @@ class DependencyTreeNode(TerminalNode):
         """
         Iterator over terminals.
         """
-        print len(self.terminals)
+        # print len(self.terminals)
         if len(self.terminals)==0:
             self.setTerminals()
         for t in self.terminals:
