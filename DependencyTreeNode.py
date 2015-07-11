@@ -32,6 +32,7 @@ class DependencyTreeNode(NLPTree):
         self.j = -1
         self.order = 0
         self.span = None
+        self.nodeList = None # list including weakref to each node; sorted by id
 	
     def setTerminals(self):
         if len(self.children) > 0:
@@ -41,16 +42,17 @@ class DependencyTreeNode(NLPTree):
             self.terminals = [weakref.ref(self)]
         return self.terminals
 
-    def getTerminal(self, i):
-        """
-        Return terminal with index i
-        Store only weak references to terminals
-        """
-        if len(self.terminals)==0:
-            self.setTerminals()
-        return self.terminals[i]()
+    def getAllNodes(self):
+        return self.nodeList
 
-    def getTerminals(self):
+    def getNodeByIndex(self, i):
+        """
+        Return node with index i
+        Store only weak references to node
+        """
+        return self.nodeList[i]
+
+    def getTreeTerminals(self):
         """
         Iterator over terminals.
         """
@@ -61,13 +63,15 @@ class DependencyTreeNode(NLPTree):
             yield t()
 
     def span_start(self):
-        if(self.children):
-            return self.children[0].span_start()
-        if(len(self.children) == 0):
-            return self.eIndex
+        return self.i
+        # if(self.children):
+        #     return self.children[0].span_start()
+        # if(len(self.children) == 0):
+        #     return self.eIndex
 
     def span_end(self):
-        if(self.children):
-            return self.children[-1].span_end()
-        if(len(self.children) == 0):
-            return self.eIndex
+        return self.j-1
+        # if(self.children):
+        #     return self.children[-1].span_end()
+        # if(len(self.children) == 0):
+        #     return self.eIndex

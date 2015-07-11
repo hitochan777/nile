@@ -372,8 +372,6 @@ def perceptron_parallel(epoch, indices, blob, weights = None, valid_feature_name
         hyp = model.fear
       else:
         sys.stderr.write("ERROR: Unknown hyp class: %s\n" %(FLAGS.hyp))
-      print(i,)
-      print(hyp)
       # Debiasing
       if FLAGS.debiasing:
           validate_features(oracle.scoreVector, valid_feature_names)

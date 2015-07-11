@@ -1,6 +1,7 @@
 import re
 import sys
 import weakref
+# http://stackoverflow.com/questions/9908013/weak-references-in-python
 
 from NLPTree import NLPTree
 from TerminalNode import TerminalNode
@@ -58,12 +59,11 @@ def stringToDependencyTreeWeakRef(string):
             rootId = id
             nodeList[id].parent = None
     if rootId == -1:
-        sys.exit("root didn't appeared!")
+        sys.exit("root didn't appeare!")
     addSpans(nodeList[rootId])
+    nodeList[rootId].nodeList = nodeList
     return nodeList[rootId]
     
-    # tree = addSpans(currentRoot)
-
 def _addSpans(tree):
   i = 0
   for node in tree.bottomup():
@@ -83,7 +83,7 @@ def addSpans(tree):
             node.i = node.data["id"]
             node.j = node.i + 1
         else:
-            node.i = min(node.children[0].i,node.data["id"]+1)
+            node.i = min(node.children[0].i,node.data["id"])
             node.j = max(node.children[-1].j,node.data["id"]+1)
     return tree
 

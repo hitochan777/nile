@@ -59,13 +59,13 @@ class LocalFeatures:
     # Encode results as features
     if inverse:
       values[name+'_inv'] = 1
-      values[name+'_inv_%s' %(currentNode.data)] = 1
+      values[name+'_inv_%s' %(currentNode.data["pos"])] = 1
     if a1:
       values[name+'_a1'] = 1
-      values[name+'_a1_%s' %(currentNode.data)] = 1
+      values[name+'_a1_%s' %(currentNode.data["pos"])] = 1
     if a2:
       values[name+'_a2'] = 1
-      values[name+'_a2_%s' %(currentNode.data)] = 1
+      values[name+'_a2_%s' %(currentNode.data["pos"])] = 1
 
     return values
 
@@ -140,14 +140,14 @@ class LocalFeatures:
     """
     name = self.ff_tgtTag_srcTag.func_name
 
-    if currentNode.data == '_XXX_':
+    if currentNode.data["pos"] == '_XXX_':
       return {}
     if info['ftree'] is None:
       return {}
     if len(info['ftree'].terminals) == 0:
       return {}
 
-    tgtTag = currentNode.data
+    tgtTag = currentNode.data["pos"]
     srcTags = ""
 
     if len(links) == 0:
@@ -156,7 +156,7 @@ class LocalFeatures:
       for link in links:
         findex = link[0]
         try:
-          srcTags += (info['ftree'].getTerminal(findex).data+",")
+          srcTags += (info['ftree'].getNodeByIndex(findex).data["pos"]+",")
         except:
           return {}
 
@@ -295,7 +295,7 @@ class LocalFeatures:
     """
     Return translation rules rules extracted at this node encoded as features.
     """
-    if currentNode.data == '_XXX_':
+    if currentNode.data["pos"] == '_XXX_':
       return {}
     name = self.ff_hminghkm.func_name
     features = defaultdict(int)
@@ -325,12 +325,12 @@ class LocalFeatures:
                                   hierarchical=True):
         # We only care about rules with root(LHS) = currentNode
         try:
-          ruleRoot = rule.e.data
+          ruleRoot = rule.e.data["pos"]
         except:
           # Probably a blank line or a bad rule?
           continue
 
-        if ruleRoot != currentNode.data:
+        if ruleRoot != currentNode.data["pos"]:
           continue
         rulestr = str(rule)
         rulestr = rulestr.replace(" ","_")
@@ -533,7 +533,7 @@ class NonlocalFeatures:
           # [    ] [    ]
           # [    ] [    ]
           if edge1_maxF == edge2_maxF and edge1_minF == edge2_minF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'0___'+value] = 1
           # Case 1 (monotonic)
           # [    ]
@@ -541,7 +541,7 @@ class NonlocalFeatures:
           #        [    ]
           #        [    ]
           elif edge1_maxF < edge2_minF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'1___'+value] = 1
           # Case 2 (reordered)
           #        [    ]
@@ -549,14 +549,14 @@ class NonlocalFeatures:
           # [    ]
           # [    ]
           elif edge1_minF > edge2_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'2___'+value] = 1
           # Case 3
           # [    ]
           # [    ] [    ]
           #        [    ]
           elif edge1_maxF >= edge2_minF and edge1_maxF < edge2_maxF and edge1_minF < edge2_minF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'3___'+value] = 1
           # Case 4
           #        [    ]
@@ -565,45 +565,45 @@ class NonlocalFeatures:
           # [    ]
   
           elif edge1_minF >= edge2_minF and edge1_minF < edge2_maxF and edge1_maxF > edge2_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'4___'+value] = 1
           # Case 5 (1 shares top of 2)
           # [    ] [    ]
           #        [    ]
           elif edge1_minF == edge2_minF and edge1_maxF < edge2_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'5___'+value] = 1
           # Case 6 (1 shares bot of 2)
           #        [    ]
           # [    ] [    ]
           elif edge1_maxF == edge2_maxF and edge1_minF > edge2_minF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'6___'+value] = 1
           # Case 7 (2 shares top of 1; same as 5 but diff bracketing)
           # [    ] [    ]
           # [    ]
           elif edge2_minF == edge1_minF and edge2_maxF < edge1_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'7___'+value] = 1
           # Case 8 (2 shares bot of 1; same as 6 but diff bracketing)
           # [    ]
           # [    ] [    ]
           elif edge2_maxF == edge1_maxF and edge2_minF > edge1_minF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'8___'+value] = 1
           # Case 9 (1 wholly contained in 2)
           #        [    ]
           # [    ] [    ]
           #        [    ]
           elif edge1_minF > edge2_minF and edge1_maxF < edge2_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'9___'+value] = 1
           # Case 10 (2 wholly contained in 1)
           # [    ]
           # [    ] [    ]
           # [    ]
           elif edge2_minF > edge1_minF and edge2_maxF < edge1_maxF:
-              value = "%s(%s,%s)" %(treeNode.data,treeNode.children[0].data,treeNode.children[1].data)
+              value = "%s(%s,%s)" %(treeNode.data["pos"],treeNode.children[0].data["pos"],treeNode.children[1].data["pos"])
               values[name+'10___'+value] = 1
           # else: dump links here to find out what cases we missed, if any
         except:
@@ -659,14 +659,14 @@ class NonlocalFeatures:
         """
         name = self.ff_nonlocal_tgtTag_srcTag.func_name
   
-        if treeNode.data == '_XXX_':
+        if treeNode.data["pos"] == '_XXX_':
           return {}
         if info['ftree'] is None:
           return {}
         if len(info['ftree'].terminals) == 0:
           return {}
   
-        tgtTag = treeNode.data
+        tgtTag = treeNode.data["pos"]
         srcTag = ""
         # Account for the null alignment case
         if len(links) == 0:
@@ -678,9 +678,9 @@ class NonlocalFeatures:
         # Catch exception due to bad parse tree.
         # Ignore error and continue.
         try:
-          minFNode = info['ftree'].getTerminal(minF)
-          leftFTag = minFNode.data
-          rightFTag = info['ftree'].getTerminal(maxF).data
+            minFNode = info['ftree'].getNodeByIndex(minF)
+            leftFTag = minFNode.data["pos"]
+            rightFTag = info['ftree'].getNodeByIndex(maxF).data["pos"]
         except:
           return {}
   
@@ -688,15 +688,14 @@ class NonlocalFeatures:
           value = "%s:%s" % (tgtTag, leftFTag)
           return {name+'___'+value: 1}
         else:
-          fspan = (minF, maxF)
-          currentFNode = minFNode
-          while not containsSpan(currentFNode, fspan):
-            currentFNode = currentFNode.getParent()
-          srcTag = currentFNode.data
-          value1 =  '%s:%s' % (tgtTag,srcTag)
-          value2 = '%s:%s(%s,%s)' % (tgtTag, srcTag, leftFTag, rightFTag)
-          return {name+'___'+value1: 1,
-                  name+'___'+value2: 1}
+            fspan = (minF, maxF)
+            currentFNode = minFNode
+            while not containsSpan(currentFNode, fspan):
+                currentFNode = currentFNode.getParent()
+            srcTag = currentFNode.data["pos"]
+            value1 =  '%s:%s' % (tgtTag,srcTag)
+            value2 = '%s:%s(%s,%s)' % (tgtTag, srcTag, leftFTag, rightFTag)
+            return {name+'___'+value1: 1, name+'___'+value2: 1}
   
     def ff_nonlocal_hminghkm(self, info, treeNode, edge, links, srcSpan, tgtSpan, linkedToWords, childEdges, diagValues, treeDistValues):
         """
@@ -727,7 +726,7 @@ class NonlocalFeatures:
         if len(links_subset) > 0:
           for rule in minghkm.extract(fsubset, treeNode, links_subset, start_span, hierarchical=True):
             try:
-              ruleRoot = rule.e.data
+              ruleRoot = rule.e.data["pos"]
             except:
               # Probably a blank line or a bad rule?
               continue
@@ -786,8 +785,8 @@ class NonlocalFeatures:
                     eIndex1 = linkedToWords_copy[fIndex][0]
                     eIndex2 = linkedToWords_copy[fIndex][1]
                     linkedToWords_copy[fIndex] = linkedToWords_copy[fIndex][1:]
-                    node1 = info['etree'].getTerminal(eIndex1).getParent()
-                    node2 = info['etree'].getTerminal(eIndex2).getParent()
+                    node1 = info['etree'].getNodeByIndex(eIndex1)
+                    node2 = info['etree'].getNodeByIndex(eIndex2)
                     if treeDistValues.has_key((eIndex1, eIndex2)):
                         dist += treeDistValues[(eIndex1,eIndex2)]
                     else:
@@ -820,8 +819,8 @@ class NonlocalFeatures:
                   # compute dist(1,2), dist(2,3)
                 for i, eIndex1 in enumerate(linkedToWords[fIndex]):
                     for _, eIndex2 in enumerate(linkedToWords[fIndex][i+1:i+2]):
-                        node1 = info['etree'].getTerminal(eIndex1).getParent()
-                        node2 = info['etree'].getTerminal(eIndex2).getParent()
+                        node1 = info['etree'].getNodeByIndex(eIndex1)
+                        node2 = info['etree'].getNodeByIndex(eIndex2)
                         dist += self.treeDistance2(info['etree'], node1, node2)
         return dist
   

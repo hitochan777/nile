@@ -194,8 +194,8 @@ class Model(object):
       # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
       self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_isPuncAndHasMoreThanOneLink)
       self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_sameWordLinks)
-      # # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
-      # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
+      self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
+      self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
       # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
   
     def align(self):
@@ -240,7 +240,7 @@ class Model(object):
         return
       # print self.etree 
       # Add first-level nodes to the queue
-      for terminal in self.etree.getTerminals():
+      for terminal in self.etree.getTreeTerminals():
           queue.append(terminal)
       # Visit each node in the queue and put parent
       # in queue if not there already
@@ -256,7 +256,6 @@ class Model(object):
         # Visit node here.
         # if currentNode.isTerminal():
         # Is current node a preterminal?
-          # self.nodeOperation(currentNode)
           self.terminal_operation(currentNode)
           if len(currentNode.children) > 0:
               self.nonterminal_operation_cube(currentNode)
@@ -389,10 +388,10 @@ class Model(object):
             while(len(currentNode.partialAlignments) > 0):
                 sortedItems.insert(0, heappop(currentNode.partialAlignments))
             currentNode.partialAlignments = sortedItems
-            if(currentNode.parent==None):
-                print "*"*10, currentNode.data["dep_id"], "*"*10
-                for al in sortedItems[:10]:
-                    print(al)
+            # if(currentNode.parent==None):
+            #     print "*"*10, currentNode.data["dep_id"], "*"*10
+            #     for al in sortedItems[:10]:
+            #         print(al)
   
     	   ## --- end 1best computation --- ##
   
@@ -601,16 +600,13 @@ class Model(object):
       newEdge.scoreVector = svector.Vector()
   
       for e in childEdges:
-        newEdge.links += e.links
-        newEdge.scoreVector_local += e.scoreVector_local
-        newEdge.scoreVector += e.scoreVector
+          newEdge.links += e.links
+          newEdge.scoreVector_local += e.scoreVector_local
+          newEdge.scoreVector += e.scoreVector
   
-        if e.boundingBox is None:
-          e.boundingBox = self.boundingBox(e.links)
-      score, boundingBox = self.scoreEdge(newEdge,
-                                          currentNode,
-                                          span,
-                                          childEdges)
+          if e.boundingBox is None:
+              e.boundingBox = self.boundingBox(e.links)
+      score, boundingBox = self.scoreEdge(newEdge, currentNode, span, childEdges)
       return newEdge, boundingBox
   
     ############################################################################
@@ -624,271 +620,268 @@ class Model(object):
       (3) srcSpan: span (i, j) of currentNode; i = index of first terminal node in span, j = index of last terminal node in span
       (4) childEdges: the two (or more in case of general trees) nodes we are combining with a new hyperedge
       """
-  
+
+      # print(srcSpan)
       if self.COMPUTE_ORACLE:
           edge.fscore = self.ff_fscore(edge, srcSpan)
   
       boundingBox = None
       if self.DO_RESCORE:
-        ##################################################################
-        # Compute data needed for certain feature functions
-        ##################################################################
-        tgtSpan = None
-        if len(edge.links) > 0:
-          boundingBox = self.boundingBox(edge.links)
-          tgtSpan = (boundingBox[0][0], boundingBox[1][0])
-        edge.boundingBox = boundingBox
+          ##################################################################
+          # Compute data needed for certain feature functions
+          ##################################################################
+          tgtSpan = None
+          if len(edge.links) > 0:
+              boundingBox = self.boundingBox(edge.links)
+              tgtSpan = (boundingBox[0][0], boundingBox[1][0])
+          edge.boundingBox = boundingBox
   
-        # TODO: This is an awful O(l) patch of code
-        linkedIndices = defaultdict(list)
-        for link in edge.links:
-          fIndex = link[0]
-          eIndex = link[1]
-          linkedIndices[fIndex].append(eIndex)
+          # TODO: This is an awful O(l) patch of code
+          linkedIndices = defaultdict(list)
+          for link in edge.links:
+              fIndex = link[0]
+              eIndex = link[1]
+              linkedIndices[fIndex].append(eIndex)
   
-        scoreVector = svector.Vector(edge.scoreVector)
+          scoreVector = svector.Vector(edge.scoreVector)
   
-        if currentNode.data is not None and currentNode.data is not '_XXX_':
-          for _, func in enumerate(self.featureTemplates_nonlocal):
-            value_dict = func(self.info, currentNode, edge, edge.links, srcSpan, tgtSpan, linkedIndices, childEdges, self.diagValues, self.treeDistValues)
-            for name, value in value_dict.iteritems():
-              if value != 0:
-                scoreVector[name] = value
-        edge.scoreVector = scoreVector
+          if currentNode.data is not None and currentNode.data is not '_XXX_':
+              for _, func in enumerate(self.featureTemplates_nonlocal):
+                  value_dict = func(self.info, currentNode, edge, edge.links, srcSpan, tgtSpan, linkedIndices, childEdges, self.diagValues, self.treeDistValues)
+                  for name, value in value_dict.iteritems():
+                      if value != 0:
+                          scoreVector[name] = value
+          edge.scoreVector = scoreVector
   
-        ##################################################
-        # Compute final score for this partial alignment
-        ##################################################
-        edge.score = edge.scoreVector.dot(self.weights)
+          ##################################################
+          # Compute final score for this partial alignment
+          ##################################################
+          edge.score = edge.scoreVector.dot(self.weights)
   
       return edge.score, boundingBox
   
     def boundingBox(self, links):
-      """
-      Return a 2-tuple of ordered paris representing
-      the bounding box for the links in list 'links'.
-      (upper-left corner, lower-right corner)
-      """
-      # upper left corner is (min(fIndices), min(eIndices))
-      # lower right corner is (max(fIndices, max(eIndices))
+        """
+        Return a 2-tuple of ordered paris representing
+        the bounding box for the links in list 'links'.
+        (upper-left corner, lower-right corner)
+        """
+        # upper left corner is (min(fIndices), min(eIndices))
+        # lower right corner is (max(fIndices, max(eIndices))
   
-      minF = float('inf')
-      maxF = float('-inf')
-      minE = float('inf')
-      maxE = float('-inf')
+        minF = float('inf')
+        maxF = float('-inf')
+        minE = float('inf')
+        maxE = float('-inf')
   
-      for link in links:
-        fIndex = link[0]
-        eIndex = link[1]
-        if fIndex > maxF:
-          maxF = fIndex
-        if fIndex < minF:
-          minF = fIndex
-        if eIndex > maxE:
-          maxE = eIndex
-        if eIndex < minE:
-          minE = eIndex
-      # This box is the top-left corner and the lower-right corner
-      box = ((minF, minE), (maxF, maxE))
-      return box
+        for link in links:
+            fIndex = link[0]
+            eIndex = link[1]
+            if fIndex > maxF:
+                maxF = fIndex
+            if fIndex < minF:
+                minF = fIndex
+            if eIndex > maxE:
+                maxE = eIndex
+            if eIndex < minE:
+                minE = eIndex
+        # This box is the top-left corner and the lower-right corner
+        box = ((minF, minE), (maxF, maxE))
+        return box
   
-    def nodeOperation(self, currentNode = None):
-        self.terminal_operation(currentNode)
-        self.nonterminal_operation_cube(currentNode)
-
     def terminal_operation(self, currentNode = None):
-      """
-      Fire features at (pre)terminal nodes of the tree.
-      """
-      ##################################################
-      # Setup
-      ##################################################
+        """
+        Fire features at (pre)terminal nodes of the tree.
+        """
+        ##################################################
+        # Setup
+        ##################################################
   
-      partialAlignments = []
-      partialAlignments_hope = []
-      partialAlignments_fear = []
-      oracleAlignment = None
+        partialAlignments = []
+        partialAlignments_hope = []
+        partialAlignments_fear = []
+        oracleAlignment = None
   
-      heapify(partialAlignments)
+        heapify(partialAlignments)
   
-      tgtWordList = self.f
-      srcWordList = self.e
-      tgtWord = None
-      srcWord = currentNode.data["surface"]
-      srcTag = currentNode.data["pos"]
-      tgtIndex = None
-      srcIndex = currentNode.eIndex
+        tgtWordList = self.f
+        srcWordList = self.e
+        tgtWord = None
+        srcWord = currentNode.data["surface"]
+        srcTag = currentNode.data["pos"]
+        tgtIndex = None
+        srcIndex = currentNode.eIndex
   
-      span = (srcIndex, srcIndex)
+        span = (srcIndex, srcIndex)
   
-      ##################################################
-      # null partial alignment ( assign no links )
-      ##################################################
-      tgtIndex = -1
-      tgtWord = '*NULL*'
-      scoreVector = svector.Vector()
-      # Compute feature score
-  
-      for k, func in enumerate(self.featureTemplates):
-          value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, [], self.diagValues, currentNode)
-          for name, value in value_dict.iteritems():
-              if value != 0:
-                  scoreVector[name] += value
-  
-      nullPartialAlignment = PartialGridAlignment()
-      nullPartialAlignment.score = score = scoreVector.dot(self.weights)
-      nullPartialAlignment.scoreVector = scoreVector
-      nullPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
-      self.addPartialAlignment(partialAlignments, nullPartialAlignment, self.BEAM_SIZE)
-  
-      if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
-          nullPartialAlignment.fscore = self.ff_fscore(nullPartialAlignment, span)
-          if self.COMPUTE_ORACLE:
-              oracleAlignment = nullPartialAlignment
-          if self.COMPUTE_HOPE:
-              nullPartialAlignment.hope = nullPartialAlignment.fscore + nullPartialAlignment.score
-              self.addPartialAlignment_hope(partialAlignments_hope, nullPartialAlignment, self.BEAM_SIZE)
-          if self.COMPUTE_FEAR:
-              nullPartialAlignment.fear = (1 - nullPartialAlignment.fscore) + nullPartialAlignment.score
-              self.addPartialAlignment_fear(partialAlignments_fear, nullPartialAlignment, self.BEAM_SIZE)
-  
-      ##################################################
-      # Single-link alignment
-      ##################################################
-      singleBestAlignment = []
-      alignmentList = []
-      for tgtIndex, tgtWord in enumerate(tgtWordList):
-        currentLinks = [(tgtIndex, srcIndex)]
+        ##################################################
+        # null partial alignment ( assign no links )
+        ##################################################
+        tgtIndex = -1
+        tgtWord = '*NULL*'
         scoreVector = svector.Vector()
+        # Compute feature score
   
         for k, func in enumerate(self.featureTemplates):
-          value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, currentLinks, self.diagValues, currentNode)
-          for name, value in value_dict.iteritems():
-            if value != 0:
-              scoreVector[name] += value
+            value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, [], self.diagValues, currentNode)
+            for name, value in value_dict.iteritems():
+                if value != 0:
+                    scoreVector[name] += value
   
-        # Keep track of scores for all 1-link partial alignments
-        score = scoreVector.dot(self.weights)
-        singleBestAlignment.append((score, [tgtIndex]))
-  
-        singleLinkPartialAlignment = PartialGridAlignment()
-        singleLinkPartialAlignment.score = score
-        singleLinkPartialAlignment.scoreVector = scoreVector
-        singleLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
-        singleLinkPartialAlignment.links = currentLinks
-  
-        self.addPartialAlignment(partialAlignments, singleLinkPartialAlignment, self.BEAM_SIZE)
+        nullPartialAlignment = PartialGridAlignment()
+        nullPartialAlignment.score = score = scoreVector.dot(self.weights)
+        nullPartialAlignment.scoreVector = scoreVector
+        nullPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
+        self.addPartialAlignment(partialAlignments, nullPartialAlignment, self.BEAM_SIZE)
   
         if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
-          singleLinkPartialAlignment.fscore = self.ff_fscore(singleLinkPartialAlignment, span)
+            nullPartialAlignment.fscore = self.ff_fscore(nullPartialAlignment, span)
+            if self.COMPUTE_ORACLE:
+                oracleAlignment = nullPartialAlignment
+            if self.COMPUTE_HOPE:
+                nullPartialAlignment.hope = nullPartialAlignment.fscore + nullPartialAlignment.score
+                self.addPartialAlignment_hope(partialAlignments_hope, nullPartialAlignment, self.BEAM_SIZE)
+            if self.COMPUTE_FEAR:
+                nullPartialAlignment.fear = (1 - nullPartialAlignment.fscore) + nullPartialAlignment.score
+                self.addPartialAlignment_fear(partialAlignments_fear, nullPartialAlignment, self.BEAM_SIZE)
   
-          if self.COMPUTE_ORACLE:
-            if singleLinkPartialAlignment.fscore > oracleAlignment.fscore:
-              oracleAlignment = singleLinkPartialAlignment
+        ##################################################
+        # Single-link alignment
+        ##################################################
+        singleBestAlignment = []
+        alignmentList = []
+        for tgtIndex, tgtWord in enumerate(tgtWordList):
+          currentLinks = [(tgtIndex, srcIndex)]
+          scoreVector = svector.Vector()
   
-          if self.COMPUTE_HOPE:
-            singleLinkPartialAlignment.hope = singleLinkPartialAlignment.fscore + singleLinkPartialAlignment.score
-            self.addPartialAlignment_hope(partialAlignments_hope, singleLinkPartialAlignment, self.BEAM_SIZE)
+          for k, func in enumerate(self.featureTemplates):
+            value_dict = func(self.info, tgtWord, srcWord, tgtIndex, srcIndex, currentLinks, self.diagValues, currentNode)
+            for name, value in value_dict.iteritems():
+              if value != 0:
+                scoreVector[name] += value
   
-          if self.COMPUTE_FEAR:
-            singleLinkPartialAlignment.fear = (1-singleLinkPartialAlignment.fscore)+singleLinkPartialAlignment.score
-            self.addPartialAlignment_fear(partialAlignments_fear, singleLinkPartialAlignment, self.BEAM_SIZE)
-      alignmentList = singleBestAlignment
-      singleBestAlignment.sort(reverse=True)
-      ##################################################
-      # N link alignment(N>=2)
-      ##################################################
-      # Get ready for N-link alignments(N>=2)
-      for i in xrange(2,self.nto1+1): 
-        # Sort the fwords by score
-        alignmentList.sort(reverse=True)
-        newAlignmentList = []
-        LIMIT_1 = max(10, self.lenF/2)
-        LIMIT_N = max(10, self.lenF/i)
-        for (_,na) in alignmentList[0:LIMIT_N]:# na means n link alignment
-          for (_, sa) in singleBestAlignment[0:LIMIT_1]:#sa means single-link alignment
-            if(na[-1]>=sa[0]):#sa actually always have only one element
-              continue
-            # clear contents of twoLinkPartialAlignment
-            tgtIndex_a = na[-1]
-            tgtIndex_b = sa[0]
-            # Don't consider a pair (tgtIndex_a, tgtIndex_b) if distance between
-            # these indices > 1 (Arabic/English only).
-            # Need to debug feature that is supposed to deal with this naturally.
-            if self.LANG == "ar_en":
-              if (abs(tgtIndex_b - tgtIndex_a) > 1):
+          # Keep track of scores for all 1-link partial alignments
+          score = scoreVector.dot(self.weights)
+          singleBestAlignment.append((score, [tgtIndex]))
+  
+          singleLinkPartialAlignment = PartialGridAlignment()
+          singleLinkPartialAlignment.score = score
+          singleLinkPartialAlignment.scoreVector = scoreVector
+          singleLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
+          singleLinkPartialAlignment.links = currentLinks
+  
+          self.addPartialAlignment(partialAlignments, singleLinkPartialAlignment, self.BEAM_SIZE)
+  
+          if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
+            singleLinkPartialAlignment.fscore = self.ff_fscore(singleLinkPartialAlignment, span)
+  
+            if self.COMPUTE_ORACLE:
+              if singleLinkPartialAlignment.fscore > oracleAlignment.fscore:
+                oracleAlignment = singleLinkPartialAlignment
+  
+            if self.COMPUTE_HOPE:
+              singleLinkPartialAlignment.hope = singleLinkPartialAlignment.fscore + singleLinkPartialAlignment.score
+              self.addPartialAlignment_hope(partialAlignments_hope, singleLinkPartialAlignment, self.BEAM_SIZE)
+  
+            if self.COMPUTE_FEAR:
+              singleLinkPartialAlignment.fear = (1-singleLinkPartialAlignment.fscore)+singleLinkPartialAlignment.score
+              self.addPartialAlignment_fear(partialAlignments_fear, singleLinkPartialAlignment, self.BEAM_SIZE)
+        alignmentList = singleBestAlignment
+        singleBestAlignment.sort(reverse=True)
+        ##################################################
+        # N link alignment(N>=2)
+        ##################################################
+        # Get ready for N-link alignments(N>=2)
+        for i in xrange(2,self.nto1+1): 
+          # Sort the fwords by score
+          alignmentList.sort(reverse=True)
+          newAlignmentList = []
+          LIMIT_1 = max(10, self.lenF/2)
+          LIMIT_N = max(10, self.lenF/i)
+          for (_,na) in alignmentList[0:LIMIT_N]:# na means n link alignment
+            for (_, sa) in singleBestAlignment[0:LIMIT_1]:#sa means single-link alignment
+              if(na[-1]>=sa[0]):#sa actually always have only one element
                 continue
+              # clear contents of twoLinkPartialAlignment
+              tgtIndex_a = na[-1]
+              tgtIndex_b = sa[0]
+              # Don't consider a pair (tgtIndex_a, tgtIndex_b) if distance between
+              # these indices > 1 (Arabic/English only).
+              # Need to debug feature that is supposed to deal with this naturally.
+              if self.LANG == "ar_en":
+                if (abs(tgtIndex_b - tgtIndex_a) > 1):
+                  continue
   
-            currentLinks = list(map(lambda x: (x,srcIndex),na+sa))
-              
-            scoreVector = svector.Vector()
-            for k, func in enumerate(self.featureTemplates):
-              value_dict = func(self.info, tgtWord, srcWord,
-                                tgtIndex, srcIndex, currentLinks,
-                                self.diagValues, currentNode)
-              for name, value in value_dict.iteritems():
-                if value != 0:
-                  scoreVector[name] += value
+              currentLinks = list(map(lambda x: (x,srcIndex),na+sa))
+                
+              scoreVector = svector.Vector()
+              for k, func in enumerate(self.featureTemplates):
+                value_dict = func(self.info, tgtWord, srcWord,
+                                  tgtIndex, srcIndex, currentLinks,
+                                  self.diagValues, currentNode)
+                for name, value in value_dict.iteritems():
+                  if value != 0:
+                    scoreVector[name] += value
   
-            score = scoreVector.dot(self.weights)
-            newAlignmentList.append((score, na+sa))
+              score = scoreVector.dot(self.weights)
+              newAlignmentList.append((score, na+sa))
   
-            NLinkPartialAlignment = PartialGridAlignment()
-            NLinkPartialAlignment.score = score
-            NLinkPartialAlignment.scoreVector = scoreVector
-            NLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
-            NLinkPartialAlignment.links = currentLinks
-            self.addPartialAlignment(partialAlignments, NLinkPartialAlignment, self.BEAM_SIZE)
-            if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
-              NLinkPartialAlignment.fscore = self.ff_fscore(NLinkPartialAlignment, span)
+              NLinkPartialAlignment = PartialGridAlignment()
+              NLinkPartialAlignment.score = score
+              NLinkPartialAlignment.scoreVector = scoreVector
+              NLinkPartialAlignment.scoreVector_local = svector.Vector(scoreVector)
+              NLinkPartialAlignment.links = currentLinks
+              self.addPartialAlignment(partialAlignments, NLinkPartialAlignment, self.BEAM_SIZE)
+              if self.COMPUTE_ORACLE or self.COMPUTE_FEAR:
+                NLinkPartialAlignment.fscore = self.ff_fscore(NLinkPartialAlignment, span)
   
-              if self.COMPUTE_ORACLE:
-                if NLinkPartialAlignment.fscore > oracleAlignment.fscore:
-                  oracleAlignment = NLinkPartialAlignment
+                if self.COMPUTE_ORACLE:
+                  if NLinkPartialAlignment.fscore > oracleAlignment.fscore:
+                    oracleAlignment = NLinkPartialAlignment
   
-              if self.COMPUTE_HOPE:
-                NLinkPartialAlignment.hope = NLinkPartialAlignment.fscore + NLinkPartialAlignment.score
-                self.addPartialAlignment_hope(partialAlignments_hope, NLinkPartialAlignment, self.BEAM_SIZE)
+                if self.COMPUTE_HOPE:
+                  NLinkPartialAlignment.hope = NLinkPartialAlignment.fscore + NLinkPartialAlignment.score
+                  self.addPartialAlignment_hope(partialAlignments_hope, NLinkPartialAlignment, self.BEAM_SIZE)
   
-              if self.COMPUTE_FEAR:
-                NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
-                self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
-        alignmentList = newAlignmentList 
+                if self.COMPUTE_FEAR:
+                  NLinkPartialAlignment.fear = (1-NLinkPartialAlignment.fscore)+NLinkPartialAlignment.score
+                  self.addPartialAlignment_fear(partialAlignments_fear, NLinkPartialAlignment, self.BEAM_SIZE)
+          alignmentList = newAlignmentList 
   
-      ########################################################################
-      # Finalize. Sort model-score list and then hope list.
-      ########################################################################
-      # Sort model score list.
-      sortedBestFirstPartialAlignments = []
-      while len(partialAlignments) > 0:
-        sortedBestFirstPartialAlignments.insert(0,heappop(partialAlignments))
-      # Sort hope score list.
-      if self.COMPUTE_HOPE:
-        sortedBestFirstPartialAlignments_hope = []
-        while len(partialAlignments_hope) > 0:
-          (_, obj) = heappop(partialAlignments_hope)
-          sortedBestFirstPartialAlignments_hope.insert(0,obj)
-      # Sort fear score list.
-      if self.COMPUTE_FEAR:
-        sortedBestFirstPartialAlignments_fear = []
-        while len(partialAlignments_fear) > 0:
-          (_, obj) = heappop(partialAlignments_fear)
-          sortedBestFirstPartialAlignments_fear.insert(0, obj)
+        ########################################################################
+        # Finalize. Sort model-score list and then hope list.
+        ########################################################################
+        # Sort model score list.
+        sortedBestFirstPartialAlignments = []
+        while len(partialAlignments) > 0:
+          sortedBestFirstPartialAlignments.insert(0,heappop(partialAlignments))
+        # Sort hope score list.
+        if self.COMPUTE_HOPE:
+          sortedBestFirstPartialAlignments_hope = []
+          while len(partialAlignments_hope) > 0:
+            (_, obj) = heappop(partialAlignments_hope)
+            sortedBestFirstPartialAlignments_hope.insert(0,obj)
+        # Sort fear score list.
+        if self.COMPUTE_FEAR:
+          sortedBestFirstPartialAlignments_fear = []
+          while len(partialAlignments_fear) > 0:
+            (_, obj) = heappop(partialAlignments_fear)
+            sortedBestFirstPartialAlignments_fear.insert(0, obj)
   
-      currentNode.partialAlignments = sortedBestFirstPartialAlignments
-      if self.COMPUTE_FEAR:
-        currentNode.partialAlignments_fear = sortedBestFirstPartialAlignments_fear
-      if self.COMPUTE_HOPE:
-        currentNode.partialAlignments_hope = sortedBestFirstPartialAlignments_hope
-      if self.COMPUTE_ORACLE:
-        currentNode.oracle = None
-        # Oracle BEFORE beam is applied
-        currentNode.oracle = oracleAlignment
+        currentNode.partialAlignments = sortedBestFirstPartialAlignments
+        if self.COMPUTE_FEAR:
+          currentNode.partialAlignments_fear = sortedBestFirstPartialAlignments_fear
+        if self.COMPUTE_HOPE:
+          currentNode.partialAlignments_hope = sortedBestFirstPartialAlignments_hope
+        if self.COMPUTE_ORACLE:
+          currentNode.oracle = None
+          # Oracle BEFORE beam is applied
+          currentNode.oracle = oracleAlignment
   
-        # Oracle AFTER beam is applied
-        #oracleCandidates = list(partialAlignments)
-        #oracleCandidates.sort(key=attrgetter('fscore'),reverse=True)
-        #currentNode.oracle = oracleCandidates[0]
+          # Oracle AFTER beam is applied
+          #oracleCandidates = list(partialAlignments)
+          #oracleCandidates.sort(key=attrgetter('fscore'),reverse=True)
+          #currentNode.oracle = oracleCandidates[0]
     ############################################################################
     # addPartialAlignment(self, list, partialAlignment):
     # Add partial alignment to the list of possible partial alignments
