@@ -18,8 +18,8 @@ NAME=$WEIGHTS.test-output.a
 nice -19 mpiexec -n $NUMCPUS $PYTHON ./nile.py \
   --f $DATA/test.f \
   --e $DATA/test.e \
-  --ftrees $SOURCE_TREE_DATA/test.f-parse \
-  --etrees $TARGET_TREE_DATA/test.e-parse \
+  --ftrees $SOURCE_TREE_DATA/test.f-parse.bin \
+  --etrees $TARGET_TREE_DATA/test.e-parse.bin \
   --evcb $DATA/test.e.vcb \
   --fvcb $DATA/test.f.vcb \
   --pef $DATA/GIZA++.m4.pef  \
