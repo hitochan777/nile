@@ -15,7 +15,7 @@ NAME=k${K}.$LANGPAIR.$MAXEPOCH.$PARTIAL.$LINK
 nice -15 mpiexec -n $NUMCPUS $PYTHON ./nile.py \
   --f $DATA/train.f \
   --e $DATA/train.e \
-  --gold $DATA/train.a \
+  --gold $DATA/train.a.s \
   --ftrees $SOURCE_TREE_DATA/train.f-parse.bin \
   --etrees $TARGET_TREE_DATA/train.e-parse.bin \
   --fdev $DATA/dev.f \
