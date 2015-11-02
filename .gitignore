@@ -1,28 +1,11 @@
-*
-
-!README
-!RELEASE_NOTES
-
-# python files
-!Alignment.py
-!Features.py
-!Fmeasure.py
-!GridAlign.py
-!NLPTree.py
-!NLPTreeHelper.py
-!PartialGridAlignment.py
-!TerminalNode.py
-!Tree.py
-!extract-weights.py
-!hminghkm.py
-!io_helper.py
-!nile.py
-!prepare-vocab.py
-
-# Shell scripts
-test.sh
-train.sh
-weights.sh
-
-# svector
-svector
+data
+*.pyc
+*.out
+*.err
+weights.*
+.nfs*
+*.out
+*.err
+*.output.a
+*debug*
+*weights-*
