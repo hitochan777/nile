@@ -1,65 +1,45 @@
 #!/bin/bash
-#PBS -l walltime=00:30:00,nodes=10:ppn=4
-#PBS -N nile-train
 
-# cd $PBS_O_WORKDIR  # Connect to working directory
-###################################################################
-# Initialize MPI
-###################################################################
-# export PATH=/home/nlg-03/riesa/mpich2-install/bin:$PATH
-# export PYTHONPATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$PYTHONPATH
-# export LD_LIBRARY_PATH=/home/nlg-03/riesa/boost_1_48_0/stage/lib:$LD_LIBRARY_PATH
-# NUMCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
-###################################################################
+export PATH=/home/chu/mpich-install/bin:$PATH
+export PYTHONPATH=/home/chu/tools/boost_1_54_0/lib:$PYTHONPATH
+export LD_LIBRARY_PATH=/home/chu/tools/boost_1_54_0/lib:$LD_LIBRARY_PATH
+NUMCPUS=$CORES
 
-NUMCPUS=1
+K=128
+LINK=$1
+MAXEPOCH=$2
+PARTIAL=$3
+LANGPAIR=$4
+NAME=k${K}.$LANGPAIR.$MAXEPOCH.$PARTIAL.$LINK
 
-K=10
-DATE=`date +%m%d%y`
-
-BASEDIR=.
-DATA=$BASEDIR/data
-TRAIN=$DATA
-DEV=$DATA
-PYTHON=python
-
-NAME=d$DATE.k${K}.n$NUMCPUS.$LANGPAIR
-echo "mpiexec -n $NUMCPUS $PYTHON nile.py\\"
-echo "--f $TRAIN/train.f\\"
-echo "--e $TRAIN/train.e\\"
-echo "--gold $TRAIN/train.a\\"
-echo "--etrees $TRAIN/train.e-parse\\"
-# echo "--ftrees $TRAIN/train.f-parse\\"
-echo "--fdev $DEV/dev.f\\"
-echo "--edev $DEV/dev.e\\"
-echo "--etreesdev $DEV/dev.e-parse\\"
-# echo "--ftreesdev $DEV/dev.f-parse\\"
-echo "--golddev $DEV/dev.a\\"
-echo "--evcb $DATA/e.vcb\\"
-echo "--fvcb $DATA/f.vcb\\"
-echo "--pef $DATA/GIZA++.m4.pef\\"
-echo "--pfe $DATA/GIZA++.m4.pfe\\"
-echo "--langpair zh_ja\\"
-echo "--train\\"
-echo "--k $K 1> $NAME.out 2> $NAME.err\\"
-
-nice -15 mpiexec -n $NUMCPUS $PYTHON nile.py \
-  --f $TRAIN/train.f \
-  --e $TRAIN/train.e \
-  --gold $TRAIN/train.a \
-  --etrees $TRAIN/train.e-parse \
-  --fdev $DEV/dev.f \
-  --edev $DEV/dev.e \
-  --etreesdev $DEV/dev.e-parse \
-  --golddev $DEV/dev.a \
+nice -15 mpiexec -n $NUMCPUS $PYTHON ./nile.py \
+  --f $DATA/train.f \
+  --e $DATA/train.e \
+  --gold $DATA/train.a \
+  --ftrees $SOURCE_TREE_DATA/train.f-parse \
+  --etrees $TARGET_TREE_DATA/train.e-parse \
+  --fdev $DATA/dev.f \
+  --edev $DATA/dev.e \
+  --ftreesdev $SOURCE_TREE_DATA/dev.f-parse \
+  --etreesdev $TARGET_TREE_DATA/dev.e-parse \
+  --golddev $DATA/dev.a.s \
   --evcb $DATA/e.vcb \
   --fvcb $DATA/f.vcb \
-  --pef $DATA/GIZA++.m4.pef  \
+  --pef $DATA/GIZA++.m4.pef \
   --pfe $DATA/GIZA++.m4.pfe \
-  --langpair zh_ja \
-  --maxepochs 2 \
-  --partial 3\
+  --a1 $DATA/train.m4gdfa.e-f \
+  --a2 $DATA/train.nakazawa.e-f.s \
+  --a1_dev $DATA/dev.m4gdfa.e-f \
+  --a2_dev $DATA/dev.nakazawa.e-f.s \
+  --langpair $LANGPAIR \
+  --partial $PARTIAL \
+  --maxepochs $MAXEPOCH \
+  --nto1 $LINK \
   --train \
-  --nto1 2\
-  --k $K 2> $NAME.err
-  # --k $K 1> $NAME.out 2> $NAME.err
+  --k $K 1> $NAME.out 2> $NAME.err
+
+cat $NAME.out
+
+ITER=`grep F-score-dev $NAME.err | awk '{print $2}' | cat -n | sort -nr -k 2 | head -1 | cut -f 1 | tr -d '[[:space:]]'`
+WEIGHTS_FILE=weights.`head -1 $NAME.out`
+./weight_extract.py $WEIGHTS_FILE $ITER $NAME
