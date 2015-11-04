@@ -165,7 +165,7 @@ class Model(object):
     Incorporate the following "local" features into our model.
     """
     self.featureTemplates.append(localFeatures.ff_identity)
-    self.featureTemplates.append(localFeatures.ff_hminghkm)
+    # self.featureTemplates.append(localFeatures.ff_hminghkm)
     self.featureTemplates.append(localFeatures.ff_jumpDistance)
     self.featureTemplates.append(localFeatures.ff_finalPeriodAlignedToNonPeriod)
     self.featureTemplates.append(localFeatures.ff_lexprob_zero)
@@ -190,12 +190,12 @@ class Model(object):
     Incorporate the following combination-cost features into our model.
     """
     #self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_dummy)
-    self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
+    # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_hminghkm)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_isPuncAndHasMoreThanOneLink)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_sameWordLinks)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_treeDistance1)
     self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_tgtTag_srcTag)
-    self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
+    # self.featureTemplates_nonlocal.append(nonlocalFeatures.ff_nonlocal_crossb)
 
   def align(self):
     """
