@@ -16,11 +16,11 @@ nice -15 mpiexec -n $NUMCPUS $PYTHON ./nile.py \
   --f $DATA/train.f \
   --e $DATA/train.e \
   --gold $DATA/train.a.s \
-  --ftrees $SOURCE_TREE_DATA/train.f-parse.bin \
+  --ftrees $SOURCE_TREE_DATA/train.f-parse \
   --etrees $TARGET_TREE_DATA/train.e-parse.bin \
   --fdev $DATA/dev.f \
   --edev $DATA/dev.e \
-  --ftreesdev $SOURCE_TREE_DATA/dev.f-parse.bin \
+  --ftreesdev $SOURCE_TREE_DATA/dev.f-parse \
   --etreesdev $TARGET_TREE_DATA/dev.e-parse.bin \
   --golddev $DATA/dev.a.s \
   --evcb $DATA/e.vcb \
