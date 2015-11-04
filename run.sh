@@ -7,8 +7,8 @@ _CORES=`echo "$CPU * 0.8" | bc`
 LINK=2
 ITER=100
 PARTIAL=-1
-LANG="ja_en"
-export DATA=/windroot/otsuki/data/ASPEC-JE # Absolute path to the base directory which has data
+LANG="ja_zh"
+export DATA=/windroot/otsuki/data/ASPEC-JC # Absolute path to the base directory which has data
 export TARGET_TREE_DATA=$DATA/constituent/1best_unpacked
 export SOURCE_TREE_DATA=$DATA/constituent/1best_unpacked
 ######################################################
